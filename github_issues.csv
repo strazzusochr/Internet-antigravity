@@ -1,0 +1,269 @@
+title,body,labels,assignees,milestone,estimated_effort
+"[T-01] Docker-Compose Produktionskonfiguration erstellen","Erstelle eine vollständige `docker-compose.yml` für alle Kernservices: Elasticsearch 8.x (3 Nodes), Redis, Kafka + Zookeeper, PostgreSQL 15, FastAPI Backend, Next.js Frontend. Volumes, Healthchecks, Netzwerke und Environment-Variables definieren.
+
+**Quelle:** architecture.md.resolved (Storage Layer); task.md.resolved Abschnitt 8; hyper_mega_c2_systembuch.md.resolved Kap. 2
+
+**Akzeptanzkriterien:**
+- [ ] `docker compose up -d` startet alle Services ohne Fehler
+- [ ] Alle Healthchecks grün
+- [ ] Elasticsearch Cluster-Status = green
+- [ ] Kafka Topic `raw_articles` existiert
+
+**Risiko:** Ressourcenmangel auf Zielserver (hoch × mittel). Gegenmaßnahme: Min. 16 GB RAM konfigurieren.
+
+**Rollback:** `docker compose down -v`","infrastructure,P0,docker","","M-01: Infrastruktur & Basisservices","3 PT"
+"[T-02] Elasticsearch Index-Schema für Artikel-Index","Definiere das Mapping für den primären Artikel-Index mit allen Pflichtfeldern inkl. dense_vector (384 dims). Time-based Index-Rotation täglich. 2 Replicas pro Shard.
+
+**Quelle:** task.md.resolved Abschnitt 3; hyper_mega_c2_systembuch.md.resolved Kap. 5
+
+**Akzeptanzkriterien:**
+- [ ] PUT-Mapping ohne Fehler akzeptiert
+- [ ] Beispiel-Dokument korrekt indiziert
+- [ ] kNN-Query liefert Ergebnis
+
+**Rollback:** Alias auf alten Index zurückschalten; Snapshot-Restore.","infrastructure,P0,elasticsearch","","M-01: Infrastruktur & Basisservices","2 PT"
+"[T-03] PostgreSQL Source-Registry anlegen","Erstelle das DB-Schema für Source-Registry (sources, crawl_history, user_searches) mit Alembic-Migrations. 1000 Quellen als Seed-Daten.
+
+**Quelle:** task.md.resolved Abschnitt 6; architecture.md.resolved Storage Layer
+
+**Akzeptanzkriterien:**
+- [ ] Alle Migrationen fehlerfrei
+- [ ] CRUD auf sources funktioniert
+- [ ] 1000 Quellen importiert
+
+**Rollback:** `alembic downgrade -1`","infrastructure,P0,database","","M-01: Infrastruktur & Basisservices","2 PT"
+"[T-04] Scrapy-Redis verteilten Crawler implementieren","Implementiere Basis-Crawler mit Scrapy + Scrapy-Redis. Durchsatz min. 10.000 Seiten/Minute. Delta-Crawling via SHA-256. Deduplication-Queue in Redis. Dead-Letter-Queue. Output in Kafka.
+
+**Quelle:** architecture.md.resolved Crawler Layer; task.md.resolved Abschnitt 1
+
+**Akzeptanzkriterien:**
+- [ ] 10.000 Seiten/Minute Durchsatz
+- [ ] Duplikate erkannt und übersprungen
+- [ ] Dead-Letter-Queue funktioniert
+
+**Rollback:** Spider stoppen; Redis-Queue leeren.","crawler,P0,scrapy","","M-02: Crawler-Layer","5 PT"
+"[T-05] Playwright JS-Rendering und Stealth-Layer implementieren","Playwright für JS-Rendering von SPAs. playwright-stealth: Canvas-Fingerprint-Noise, WebGL-Spoofing, Navigator-Mutation. Bezier-Mausbewegungen. User-Agent-Rotation.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 2.1-2.3; hyper_mega_c2_systembuch.md.resolved Kap. 3.1
+
+**Akzeptanzkriterien:**
+- [ ] Playwright rendert Seiten
+- [ ] navigator.webdriver = false
+- [ ] User-Agent wechselt
+
+**Rollback:** PLAYWRIGHT_ENABLED=false","crawler,P1,playwright,stealth","","M-02: Crawler-Layer","4 PT"
+"[T-06] Tor-Proxy-Integration für Dark-Web-Crawling","Automatische Erkennung von .onion-Domains. SOCKS5-Proxy über Tor. Graph-Expansion: neue .onion-Links aus DOM extrahieren.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 3.1; hyper_mega_c2_systembuch.md.resolved Kap. 3.2
+
+**Akzeptanzkriterien:**
+- [ ] .onion-URL via Tor geroutet
+- [ ] Neue Links in Queue eingefügt
+
+**Rollback:** USE_TOR=false","crawler,P2,tor,darkweb","","M-02: Crawler-Layer","3 PT"
+"[T-07] PDF & DOCX Deep-Text-Extraktion","PyPDF2 + python-docx. EXIF-Metadaten mit exifread. Dateien > 50 MB überspringen.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 3.2; hyper_mega_c2_systembuch.md.resolved Kap. 4.1
+
+**Akzeptanzkriterien:**
+- [ ] PDF-Text extrahiert
+- [ ] EXIF-GPS-Daten vorhanden
+- [ ] Dateien > 50 MB übersprungen
+
+**Rollback:** ENABLE_DOC_EXTRACTION=false","crawler,P2,osint,metadata","","M-02: Crawler-Layer","2 PT"
+"[T-08] Kafka-Consumer und Indexer-Worker implementieren","FastAPI/Celery Indexer-Worker konsumiert Kafka-Topic. HTML-Parsing, NLP-Pipeline, Elasticsearch-Bulk-Indexing (Batches à 100).
+
+**Quelle:** architecture.md.resolved Pipeline Layer; task.md.resolved Abschnitt 2
+
+**Akzeptanzkriterien:**
+- [ ] 100.000 Dokumente in < 5 Minuten
+- [ ] Consumer-Lag sichtbar in Grafana
+
+**Rollback:** Consumer-Offset zurücksetzen.","nlp,P0,kafka,indexer","","M-03: NLP/KI-Pipeline","3 PT"
+"[T-09] spaCy Named Entity Recognition (NER) implementieren","spaCy en_core_web_sm: PERSON, ORG, GPE extrahieren. Regex-basierte BTC/XMR-Wallet-Extraktion.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 6.3; hyper_mega_c2_systembuch.md.resolved Kap. 4.3
+
+**Akzeptanzkriterien:**
+- [ ] NER erkennt Entitäten korrekt
+- [ ] BTC/XMR-Regex matcht Wallets
+- [ ] < 100 ms pro Dokument
+
+**Rollback:** ENABLE_NER=false","nlp,P1,spacy,ner","","M-03: NLP/KI-Pipeline","2 PT"
+"[T-10] VADER Sentiment-Analyse implementieren","vaderSentiment Compound-Score. sentiment_score + sentiment_label im ES-Index.
+
+**Quelle:** architecture.md.resolved Pipeline VADER; task.md.resolved Abschnitt 2
+
+**Akzeptanzkriterien:**
+- [ ] Score korrekt für positive/negative Texte
+- [ ] Feld im ES-Dokument vorhanden
+
+**Rollback:** ENABLE_SENTIMENT=false","nlp,P2,sentiment","","M-03: NLP/KI-Pipeline","1 PT"
+"[T-11] Cross-Linguale Übersetzungs-Pipeline","langdetect + deep-translator. Originaltext erhalten. language-Feld im Index.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 6.2; hyper_mega_c2_systembuch.md.resolved Kap. 4.2
+
+**Akzeptanzkriterien:**
+- [ ] Russischer Text korrekt übersetzt
+- [ ] language-Feld vorhanden
+- [ ] < 200 ms Overhead
+
+**Rollback:** ENABLE_TRANSLATION=false","nlp,P1,translation","","M-03: NLP/KI-Pipeline","2 PT"
+"[T-12] Sentence-Transformer Vektorembeddings generieren","all-MiniLM-L6-v2 → 384-dimensionaler Vektor. Modell beim Start vorladen.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 4.1; hyper_mega_c2_systembuch.md.resolved Kap. 4+5
+
+**Akzeptanzkriterien:**
+- [ ] Vektor hat genau 384 Dimensionen
+- [ ] kNN-Suche liefert semantisch ähnliche Dokumente
+- [ ] Warm-Up < 30 s
+
+**Rollback:** BM25-Only-Suche als Fallback.","nlp,P0,embeddings,ai","","M-03: NLP/KI-Pipeline","2 PT"
+"[T-13] Tesseract OCR Bild-zu-Text","pytesseract + OpenCV. Extrahierten Text an Dokument anhängen. Bilder > 5 MB überspringen.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 6.1; hyper_mega_c2_systembuch.md.resolved Kap. 4.1
+
+**Akzeptanzkriterien:**
+- [ ] Text aus Screenshot extrahiert
+- [ ] ocr_used=true im Dokument
+- [ ] < 2 s pro Bild
+
+**Rollback:** ENABLE_OCR=false","nlp,P2,ocr,tesseract","","M-03: NLP/KI-Pipeline","2 PT"
+"[T-14] Ghost-Media: YouTube-Untertitel-Extraktion","youtube-transcript-api + yt-dlp für Closed-Captions ohne Video-Playback.
+
+**Quelle:** protokollbericht.md.resolved Abschnitt 6.4; hyper_mega_c2_systembuch.md.resolved Kap. 4.4
+
+**Akzeptanzkriterien:**
+- [ ] Transkript ohne Video-Playback
+- [ ] video_transcript=true im Dokument
+- [ ] < 5 s
+
+**Rollback:** ENABLE_VIDEO_TRANSCRIPTION=false","crawler,P2,video,osint","","M-03: NLP/KI-Pipeline","2 PT"
+"[T-15] MinHash-Deduplication und TF-IDF Trending","Story-Deduplication via MinHash LSH. TF-IDF Trending über 24-h-Fenster. Ergebnisse in Redis Hot-Cache.
+
+**Quelle:** architecture.md.resolved Pipeline MinHash TF-IDF; task.md.resolved Abschnitt 2+7
+
+**Akzeptanzkriterien:**
+- [ ] Duplikate erkannt
+- [ ] Trending-Topics plausibel
+- [ ] API-Endpunkt liefert JSON
+
+**Rollback:** Dedup-Flag deaktivieren.","nlp,P2,deduplication,trending","","M-03: NLP/KI-Pipeline","3 PT"
+"[T-16] FastAPI Backend: alle Endpunkte, Rate-Limiting, Auth","POST /api/search, GET /api/sources, GET /api/trending, GET /api/stats, GET /api/health, WebSocket /api/live. Rate-Limiting via Redis. CORS. Swagger-Docs.
+
+**Quelle:** task.md.resolved Abschnitt 5; protokollbericht.md.resolved Abschnitt 4.3
+
+**Akzeptanzkriterien:**
+- [ ] Alle Endpunkte antworten korrekt
+- [ ] Rate-Limiting aktiv
+- [ ] Response-Time < 100 ms P95
+- [ ] Swagger unter /docs
+
+**Rollback:** Blue-Green Deployment.","backend,P0,fastapi,api","","M-04: API-Layer","4 PT"
+"[T-17] 1000 Nachrichtenquellen kuratieren und importieren","1000 Quellen aus DE/US/UK/FR/ES/IT/RU/CN/JP in PostgreSQL. NewsAPI-Integration.
+
+**Quelle:** task.md.resolved (Liste 1000 Nachrichtenseiten)
+
+**Akzeptanzkriterien:**
+- [ ] 1000 Quellen in DB
+- [ ] Mind. 10 Quellen pro Sprache
+
+**Rollback:** TRUNCATE sources; pg_restore","data,P1,sources","","M-04: API-Layer","3 PT"
+"[T-18] Next.js Mission Control Hub implementieren","Glassmorphism Dark Mode, WebGL-Shader, Boot-Sequence, drei 3D-Kacheln, Framer Motion. HTTPS-Cloud-Deploy.
+
+**Quelle:** master_3d_web_plan.md.resolved Abschnitt 2.1; hyper_mega_c2_systembuch.md.resolved Kap. 7
+
+**Akzeptanzkriterien:**
+- [ ] Hub lädt in < 3 s
+- [ ] Drei Kacheln sichtbar
+- [ ] HTTPS-Link öffentlich
+
+**Rollback:** Vercel Instant Rollback.","frontend,P1,nextjs,3d","","M-05: Frontend","4 PT"
+"[T-19] Targeting & Crawler Control 3D-Frontend","Smart-Paste, URL-Pills, Deep-Mode-Schalter, God-Tier-Launch, Warpdrive-Animation.
+
+**Quelle:** master_3d_web_plan.md.resolved Abschnitt 2.2; bedienungsanleitung.md.resolved Teil 1
+
+**Akzeptanzkriterien:**
+- [ ] Smart-Paste extrahiert URLs
+- [ ] Launch-Button feuert API-Call
+- [ ] Warpdrive-Animation
+
+**Rollback:** Vercel Instant Rollback.","frontend,P1,nextjs,crawler-ui","","M-05: Frontend","4 PT"
+"[T-20] 3D Matrix Search: Suchinterface + Force Graph","Glassmorphism Suchleiste, Semantic-AI-Toggle, Framer Motion Stagger, react-force-graph-3d, Metadaten-Icons, Match-Score.
+
+**Quelle:** master_3d_web_plan.md.resolved Abschnitt 2.3; protokollbericht.md.resolved Abschnitt 5
+
+**Akzeptanzkriterien:**
+- [ ] Suche liefert Ergebnisse
+- [ ] 3D Graph rendert
+- [ ] Deep-Web-Badge bei .onion
+
+**Rollback:** Vercel Instant Rollback.","frontend,P0,nextjs,3d,search","","M-05: Frontend","6 PT"
+"[T-21] System Health & Analytics Dashboard","Live-Feed-Ticker, Gauge-Chart, Stealth-Status, Nuclear-Reset mit Passwort.
+
+**Quelle:** master_3d_web_plan.md.resolved Abschnitt 2.4; bedienungsanleitung.md.resolved Teil 2
+
+**Akzeptanzkriterien:**
+- [ ] Live-Feed < 2 s Latenz
+- [ ] Nuclear-Reset nur nach Passwort
+
+**Rollback:** Vercel Instant Rollback.","frontend,P1,nextjs,monitoring","","M-05: Frontend","4 PT"
+"[T-22] Automatisches 1-Click Cloud-Deployment","Next.js auf Vercel, API auf Hugging Face. GitHub Actions CD-Workflow. Öffentlicher HTTPS-Link.
+
+**Quelle:** master_3d_web_plan.md.resolved Abschnitt 5; hyper_mega_c2_systembuch.md.resolved Kap. 2
+
+**Akzeptanzkriterien:**
+- [ ] HTTPS-Link öffentlich
+- [ ] Deploy-Zeit < 5 min
+- [ ] Kein Terminal nötig
+
+**Rollback:** Vercel Instant Rollback.","infrastructure,P0,deployment,cicd","","M-05: Frontend","3 PT"
+"[T-23] Prometheus Metriken + Grafana Dashboards","Prometheus in allen Services. Grafana-Dashboards. Alerting via Discord/Email.
+
+**Quelle:** architecture.md.resolved Ops Layer; task.md.resolved Abschnitt 7
+
+**Akzeptanzkriterien:**
+- [ ] Metriken in Prometheus sichtbar
+- [ ] Grafana lädt
+- [ ] Alert bei Service-Ausfall
+
+**Rollback:** n/a (read-only)","monitoring,P1,prometheus,grafana","","M-06: Monitoring & CI/CD","3 PT"
+"[T-24] GitHub Actions CI/CD Pipeline einrichten","CI: Lint, Tests. CD: Auto-Deploy. Security: pip-audit, npm audit, Bandit.
+
+**Quelle:** task.md.resolved Abschnitt 8
+
+**Akzeptanzkriterien:**
+- [ ] CI bei jedem PR
+- [ ] CD auto-deployed
+- [ ] Security-Scan bei CVEs
+
+**Rollback:** Workflow deaktivieren.","infrastructure,P1,cicd,github-actions","","M-06: Monitoring & CI/CD","2 PT"
+"[T-25] Security-Härtung: Input-Validation, Auth, HTTPS","Pydantic, SQL-Injection-Prevention, XSS-Schutz, JWT, Rate-Limiting, Dependency-Audit.
+
+**Quelle:** task.md.resolved Code-Qualität + Lizenz
+
+**Akzeptanzkriterien:**
+- [ ] OWASP Top 10 adressiert
+- [ ] bandit + npm audit sauber
+- [ ] HTTPS erzwungen
+
+**Rollback:** Hotfix-Branch.","security,P0,owasp","","M-06: Monitoring & CI/CD","3 PT"
+"[T-26] End-to-End Beta-Test und Abnahme","Vollständiger E2E-Test. Performance-Benchmarks: 10k URLs < 10 min, 100k Docs < 5 min, Query < 50 ms P95, Lighthouse > 85.
+
+**Quelle:** bedienungsanleitung.md.resolved; task.md.resolved Spezielle Anforderungen
+
+**Akzeptanzkriterien:**
+- [ ] Alle Bedienungsanleitung-Schritte erfolgreich
+- [ ] Performance-Benchmarks erreicht
+
+**Rollback:** Beta-Phase verlängern.","testing,P0,beta,e2e","","M-07: Beta-Test & Abnahme","3 PT"
+"[T-27] Vollständige Dokumentation erstellen","README, Lizenzhinweis, Inline-Kommentare, TypeScript-Types, OpenAPI-Spec, CONTRIBUTING.md.
+
+**Quelle:** task.md.resolved Code-Qualität + Lizenz
+
+**Akzeptanzkriterien:**
+- [ ] README vollständig
+- [ ] Lizenzhinweis vorhanden
+- [ ] OpenAPI-Spec vollständig
+
+**Rollback:** n/a","documentation,P1","","M-07: Beta-Test & Abnahme","2 PT"
