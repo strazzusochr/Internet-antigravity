@@ -1,0 +1,28 @@
+id,title,milestone,priority,start_date,end_date,duration_days,dependencies,owner,status
+T-01,Docker-Compose Produktionskonfiguration,M-01,P0,2026-03-03,2026-03-07,5,,TBD,Offen
+T-02,Elasticsearch Index-Schema,M-01,P0,2026-03-06,2026-03-10,5,T-01,TBD,Offen
+T-03,PostgreSQL Source-Registry,M-01,P0,2026-03-06,2026-03-10,5,T-01,TBD,Offen
+T-04,Scrapy-Redis Crawler,M-02,P0,2026-03-10,2026-03-20,11,"T-01,T-03",TBD,Offen
+T-05,Playwright Stealth-Layer,M-02,P1,2026-03-18,2026-03-25,8,T-04,TBD,Offen
+T-06,Tor-Proxy Integration,M-02,P2,2026-03-24,2026-03-28,5,T-05,TBD,Offen
+T-07,PDF/DOCX Extraktion,M-02,P2,2026-03-26,2026-03-28,3,T-04,TBD,Offen
+T-08,Kafka Consumer & Indexer,M-03,P0,2026-04-01,2026-04-05,5,"T-01,T-02,T-04",TBD,Offen
+T-09,spaCy NER,M-03,P1,2026-04-03,2026-04-07,5,T-08,TBD,Offen
+T-10,VADER Sentiment,M-03,P2,2026-04-05,2026-04-07,3,T-08,TBD,Offen
+T-11,Translation Pipeline,M-03,P1,2026-04-05,2026-04-09,5,T-08,TBD,Offen
+T-12,Sentence-Transformer Embeddings,M-03,P0,2026-04-08,2026-04-11,4,"T-08,T-11",TBD,Offen
+T-13,Tesseract OCR,M-03,P2,2026-04-10,2026-04-14,5,T-08,TBD,Offen
+T-14,Video Transkription,M-03,P2,2026-04-12,2026-04-16,5,T-04,TBD,Offen
+T-15,MinHash Dedup + TF-IDF Trending,M-03,P2,2026-04-14,2026-04-18,5,T-08,TBD,Offen
+T-16,FastAPI Backend vollständig,M-04,P0,2026-04-18,2026-04-25,8,"T-02,T-03,T-08,T-12",TBD,Offen
+T-17,1000 Nachrichtenquellen,M-04,P1,2026-04-20,2026-04-24,5,T-03,TBD,Offen
+T-18,Hub Frontend (Next.js),M-05,P1,2026-05-01,2026-05-08,8,T-16,TBD,Offen
+T-19,Targeting Frontend,M-05,P1,2026-05-06,2026-05-13,8,"T-16,T-18",TBD,Offen
+T-20,3D Matrix Search Frontend,M-05,P0,2026-05-10,2026-05-22,13,"T-16,T-18",TBD,Offen
+T-21,System Health Dashboard,M-05,P1,2026-05-20,2026-05-27,8,"T-16,T-18",TBD,Offen
+T-22,Cloud-Deployment (Vercel/HuggingFace),M-05,P0,2026-05-28,2026-06-02,6,"T-18,T-19,T-20,T-21",TBD,Offen
+T-23,Prometheus & Grafana,M-06,P1,2026-06-01,2026-06-08,8,"T-01,T-08,T-16",TBD,Offen
+T-24,GitHub Actions CI/CD,M-06,P1,2026-06-05,2026-06-10,6,T-22,TBD,Offen
+T-25,Security-Härtung,M-06,P0,2026-06-08,2026-06-13,6,"T-16,T-22",TBD,Offen
+T-26,Beta-Test & Abnahme,M-07,P0,2026-07-15,2026-07-22,8,T-01|T-02|T-03|T-04|T-05|T-06|T-07|T-08|T-09|T-10|T-11|T-12|T-13|T-14|T-15|T-16|T-17|T-18|T-19|T-20|T-21|T-22|T-23|T-24|T-25,TBD,Offen
+T-27,Dokumentation finalisieren,M-07,P1,2026-07-22,2026-07-28,7,T-26,TBD,Offen

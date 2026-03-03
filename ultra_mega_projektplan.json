@@ -1,0 +1,1349 @@
+{
+  "meta": {
+    "project": "HyperMega C2 OSINT Search Engine",
+    "version": "1.0.0",
+    "generated_at": "2026-03-03T05:38:16Z",
+    "generator": "GitHub Copilot AI Agent",
+    "language": "de",
+    "sources": [
+      "architecture.md.resolved",
+      "bedienungsanleitung.md.resolved",
+      "protokollbericht.md.resolved",
+      "hyper_mega_c2_systembuch.md.resolved",
+      "master_3d_web_plan.md.resolved",
+      "task.md.resolved",
+      "walkthrough.md.resolved",
+      "walkthrough_ultimate.md.resolved"
+    ]
+  },
+  "milestones": [
+    {
+      "id": "M-01",
+      "title": "Infrastruktur & Basisservices produktionsreif",
+      "target_date": "2026-03-31",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-01", "T-02", "T-03"]
+    },
+    {
+      "id": "M-02",
+      "title": "Crawler-Layer vollständig & skaliert",
+      "target_date": "2026-04-30",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-04", "T-05", "T-06", "T-07"]
+    },
+    {
+      "id": "M-03",
+      "title": "NLP/KI-Pipeline vollständig integriert",
+      "target_date": "2026-05-15",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-08", "T-09", "T-10", "T-11", "T-12", "T-13", "T-14", "T-15"]
+    },
+    {
+      "id": "M-04",
+      "title": "API-Layer vollständig & dokumentiert",
+      "target_date": "2026-05-31",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-16", "T-17"]
+    },
+    {
+      "id": "M-05",
+      "title": "Frontend vollständig & cloud-deployed",
+      "target_date": "2026-06-30",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-18", "T-19", "T-20", "T-21", "T-22"]
+    },
+    {
+      "id": "M-06",
+      "title": "Monitoring, CI/CD & Security",
+      "target_date": "2026-07-15",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-23", "T-24", "T-25"]
+    },
+    {
+      "id": "M-07",
+      "title": "Beta-Test & Abnahme",
+      "target_date": "2026-07-31",
+      "date_type": "VORSCHLAG",
+      "status": "Offen",
+      "tasks": ["T-26", "T-27"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "milestone": "M-01",
+      "title": "Docker-Compose Produktionskonfiguration erstellen",
+      "description": "Erstelle eine vollständige docker-compose.yml für alle Kernservices: Elasticsearch 8.x (3 Nodes), Redis, Kafka + Zookeeper, PostgreSQL 15, FastAPI Backend, Next.js Frontend. Volumes, Healthchecks, Netzwerke und Environment-Variables definieren.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Storage Layer; task.md.resolved Abschnitt 8; hyper_mega_c2_systembuch.md.resolved Kap. 2"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-03",
+      "end_date": "2026-03-07",
+      "date_type": "VORSCHLAG",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "docker compose up -d startet alle Services ohne Fehler",
+        "Alle Healthchecks grün",
+        "Elasticsearch Cluster-Status = green",
+        "Kafka Topic raw_articles existiert"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "mittel",
+        "description": "Ressourcenmangel auf Zielserver",
+        "countermeasure": "Ressourcen-Limits in compose konfigurieren, Min. 16 GB RAM empfohlen"
+      },
+      "test_cases": [
+        "curl http://localhost:9200/_cluster/health → green",
+        "kafka-topics --list zeigt raw_articles",
+        "Redis PING → PONG"
+      ],
+      "deliverables": ["docker-compose.yml", ".env.example", "README-infra.md"],
+      "cicd_steps": ["GitHub Actions: docker compose config + docker compose up --dry-run"],
+      "checkpoint": "Vor Commit: alle Secrets aus .env in GitHub Secrets lagern; kein Plaintext-Passwort in compose.",
+      "rollback": "docker compose down -v entfernt alle Volumes; git revert auf letzten stabilen compose-Stand.",
+      "security_checks": ["Elasticsearch Auth aktivieren", "Kafka SASL", "Redis requirepass setzen", "Alle Ports nur intern exponieren"],
+      "monitoring_metrics": ["Container-Restart-Counter", "CPU/RAM pro Container in Prometheus"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-02",
+      "milestone": "M-01",
+      "title": "Elasticsearch Index-Schema für Artikel-Index",
+      "description": "Definiere das Mapping für den primären Artikel-Index. Pflichtfelder: url, title, content, published_date, crawled_at, author, category, entities (nested), sentiment_score, language, content_hash, vector (dense_vector 384 dims). Time-based Index-Rotation täglich. 2 Replicas pro Shard.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Abschnitt 3 (Search-Engine); hyper_mega_c2_systembuch.md.resolved Kap. 5"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-06",
+      "end_date": "2026-03-10",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01"],
+      "acceptance_criteria": [
+        "PUT-Mapping ohne Fehler akzeptiert",
+        "Beispiel-Dokument korrekt indiziert",
+        "kNN-Query liefert Ergebnis"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Mapping-Inkompatibilität nach Index-Neuerstellung",
+        "countermeasure": "Index-Templates und Aliases nutzen"
+      },
+      "test_cases": [
+        "Testdokument indizieren",
+        "Volltextsuche auf content",
+        "kNN-Suche auf vector-Feld",
+        "Faceted Filter auf category"
+      ],
+      "deliverables": ["es_mapping.json", "es_index_template.json"],
+      "cicd_steps": ["Schema-Migration Script in GitHub Actions"],
+      "checkpoint": "Schema-Backup via _snapshot vor jeder Mapping-Änderung.",
+      "rollback": "Alias auf alten Index zurückschalten; Snapshot-Restore.",
+      "security_checks": ["Index-Level Security aktivieren", "Kein anonymer Zugriff"],
+      "monitoring_metrics": ["Index-Size", "Shard-Count", "Query-Latenz P95"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-03",
+      "milestone": "M-01",
+      "title": "PostgreSQL Source-Registry anlegen",
+      "description": "Erstelle das DB-Schema für die Source-Registry: Tabellen sources, crawl_history, user_searches. Migrations mit Alembic.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Abschnitt 6 (Data-Storage); architecture.md.resolved Storage Layer"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-06",
+      "end_date": "2026-03-10",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01"],
+      "acceptance_criteria": [
+        "Alle Migrationen laufen fehlerfrei",
+        "CRUD-Operationen auf sources funktionieren",
+        "1000 Quellen als Seed-Daten importiert"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "mittel",
+        "description": "Schema-Änderungen während Produktion",
+        "countermeasure": "Alembic Migrations, Blue-Green Deployment"
+      },
+      "test_cases": ["Insert/Select/Update/Delete auf sources", "Crawl-History-Eintrag erstellen", "Pagination-Test"],
+      "deliverables": ["migrations/", "seed_sources.sql", "schema.dbml"],
+      "cicd_steps": ["alembic upgrade head in CI nach Merge"],
+      "checkpoint": "DB-Dump vor Migrations: pg_dump -Fc.",
+      "rollback": "alembic downgrade -1",
+      "security_checks": ["Prepared Statements", "Kein direkter DB-Zugriff aus Frontend", "Passwort in Vault"],
+      "monitoring_metrics": ["DB-Connection-Pool-Auslastung", "Query-Zeit P95", "Disk-Usage"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-04",
+      "milestone": "M-02",
+      "title": "Scrapy-Redis verteilten Crawler implementieren",
+      "description": "Implementiere den Basis-Crawler mit Scrapy + Scrapy-Redis für verteilte Ausführung. Minimaler Durchsatz: 10.000 Seiten/Minute. Delta-Crawling via SHA-256. Deduplication-Queue in Redis. Error-Handling mit Exponential Backoff. Dead-Letter-Queue. Output in Kafka.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Crawler Layer; task.md.resolved Abschnitt 1; walkthrough_ultimate.md.resolved Abschnitt 2"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 5,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-10",
+      "end_date": "2026-03-20",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01", "T-03"],
+      "acceptance_criteria": [
+        "10.000 Seiten/Minute Durchsatz messbar",
+        "Duplikate werden erkannt und übersprungen",
+        "Dead-Letter-Queue befüllt sich bei Fehler",
+        "Kafka-Topic enthält JSON-Payloads"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "mittel",
+        "description": "Rate-Limiting durch Zielsites",
+        "countermeasure": "Proxy-Rotation, User-Agent-Wechsel, Crawl-Delay"
+      },
+      "test_cases": [
+        "100 URLs crawlen, Durchsatz messen",
+        "URL doppelt einspeisen, Dedup prüfen",
+        "Fehlerhafte URL → Dead-Letter-Queue",
+        "Kafka-Consumer Topic prüfen"
+      ],
+      "deliverables": ["crawler/spider.py", "crawler/middlewares.py", "crawler/settings.py"],
+      "cicd_steps": ["Unit-Tests + Integration-Test gegen lokales Kafka"],
+      "checkpoint": "Redis-Snapshot vor Restart; Dead-Letter-Queue regelmäßig prüfen.",
+      "rollback": "Spider stoppen; Redis-Queue leeren; letzten stabilen Commit deployen.",
+      "security_checks": ["User-Agent mit Kontakt-Email (robots.txt konform)", "Kein Passwort im Code"],
+      "monitoring_metrics": ["crawler_throughput_docs_per_sec", "crawler_error_rate", "dead_letter_queue_size"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-05",
+      "milestone": "M-02",
+      "title": "Playwright JS-Rendering und Stealth-Layer implementieren",
+      "description": "Integriere Playwright für JavaScript-Rendering von SPAs. Stealth-Modus via playwright-stealth. Bezier-Mausbewegungen, heuristisches Scrolling, User-Agent-Rotation.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 2.1-2.3; hyper_mega_c2_systembuch.md.resolved Kap. 3.1"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 4,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-18",
+      "end_date": "2026-03-25",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-04"],
+      "acceptance_criteria": [
+        "Playwright-Seiten werden gerendert",
+        "navigator.webdriver ist false",
+        "User-Agent wechselt bei jedem Request"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "hoch",
+        "description": "Hoher RAM-Verbrauch in Cloud",
+        "countermeasure": "Browser-Pool mit Max-Concurrency begrenzen"
+      },
+      "test_cases": [
+        "SPA-Seite crawlen",
+        "DevTools-Check auf webdriver-Flag",
+        "10 verschiedene User-Agents prüfen"
+      ],
+      "deliverables": ["crawler/playwright_engine.py", "crawler/stealth_config.json"],
+      "cicd_steps": ["Integration-Tests mit Playwright-Test-Site"],
+      "checkpoint": "Browser-Instanzen nach jedem Run schließen; Memory-Leak prüfen.",
+      "rollback": "Playwright-Feature-Flag deaktivieren; Fallback auf HTTP-Request.",
+      "security_checks": ["Kein Credential-Caching im Playwright-Context", "Sandboxed Browser-Instanzen"],
+      "monitoring_metrics": ["playwright_active_browsers", "playwright_page_load_time_ms", "playwright_error_rate"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-06",
+      "milestone": "M-02",
+      "title": "Tor-Proxy-Integration für Dark-Web-Crawling",
+      "description": "Implementiere automatische Erkennung von .onion-Domains. SOCKS5-Proxy über Tor-Netzwerk. Graph-Expansion: neue .onion-Links aus DOM extrahieren.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 3.1; hyper_mega_c2_systembuch.md.resolved Kap. 3.2"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-24",
+      "end_date": "2026-03-28",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-05"],
+      "acceptance_criteria": [
+        ".onion-URL wird via Tor geroutet",
+        "Neue .onion-Links werden in Queue eingefügt",
+        "Crawl-History enthält Tor-Flag"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "hoch",
+        "description": "Tor auf Hugging Face gesperrt",
+        "countermeasure": "Externen Tor-Relay-Service konfigurieren oder Feature für On-Premise-Deploy vorbehalten"
+      },
+      "test_cases": ["Test-Onion-Site crawlen", "IP-Leak-Test", "Neue Links aus DOM extrahiert"],
+      "deliverables": ["crawler/tor_proxy.py"],
+      "cicd_steps": ["Tor-Integration-Test in separatem Pipeline-Step"],
+      "checkpoint": "Tor-Daemon-Status prüfen; Circuit-Counter loggen.",
+      "rollback": "USE_TOR=false Environment-Variable; .onion-URLs in Dead-Letter-Queue.",
+      "security_checks": ["Keine Klartextidentifikation durch Tor-Exit-Nodes"],
+      "monitoring_metrics": ["tor_active_circuits", "onion_crawl_success_rate"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-07",
+      "milestone": "M-02",
+      "title": "PDF & DOCX Deep-Text-Extraktion implementieren",
+      "description": "Erkenne Links zu .pdf und .docx. Extrahiere Text via PyPDF2 und python-docx. EXIF-Metadaten mit exifread.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 3.2; hyper_mega_c2_systembuch.md.resolved Kap. 4.1"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-03-26",
+      "end_date": "2026-03-28",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-04"],
+      "acceptance_criteria": [
+        "PDF-Text korrekt extrahiert und indiziert",
+        "DOCX-Text extrahiert",
+        "EXIF-GPS-Daten im Dokument-Feld vorhanden",
+        "Dateien > 50 MB werden übersprungen"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "mittel",
+        "description": "Malformed PDFs verursachen Crashes",
+        "countermeasure": "Try/Except, Timeouts, Sandbox"
+      },
+      "test_cases": ["5 Beispiel-PDFs verarbeiten", "3 DOCX verarbeiten", "60-MB-PDF testen (übersprungen)"],
+      "deliverables": ["api/metadata.py", "tests/test_metadata.py"],
+      "cicd_steps": ["Unit-Tests mit Sample-Dateien"],
+      "checkpoint": "Dateigröße prüfen vor Download; Timeout für Extraktion.",
+      "rollback": "ENABLE_DOC_EXTRACTION=false",
+      "security_checks": ["Keine persistente Speicherung der Rohdateien", "Malware-Scan via ClamAV optional"],
+      "monitoring_metrics": ["doc_extraction_success_rate", "doc_extraction_avg_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-08",
+      "milestone": "M-03",
+      "title": "Kafka-Consumer und Indexer-Worker implementieren",
+      "description": "Implementiere FastAPI/Celery Indexer-Worker für Kafka-Topic raw_html_payloads. HTML-Parsing, NLP-Pipeline, Elasticsearch-Bulk-Indexing.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Pipeline Layer; task.md.resolved Abschnitt 2; walkthrough_ultimate.md.resolved Abschnitt 2"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-05",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01", "T-02", "T-04"],
+      "acceptance_criteria": [
+        "100.000 Dokumente in < 5 Minuten indiziert",
+        "Consumer-Lag in Grafana sichtbar",
+        "Batch-Fehler in Dead-Letter-Topic geloggt"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Kafka-Consumer-Lag wächst unbegrenzt",
+        "countermeasure": "Auto-Scaling Worker, Lag-Alerting"
+      },
+      "test_cases": [
+        "1000 Mock-Payloads in Kafka",
+        "Consumer verarbeitet alle",
+        "ES-Index enthält 1000 Dokumente",
+        "Consumer-Lag = 0 nach Verarbeitung"
+      ],
+      "deliverables": ["indexer/consumer.py", "indexer/pipeline.py"],
+      "cicd_steps": ["Integration-Test mit Test-Kafka-Instance"],
+      "checkpoint": "Consumer-Offset committen nur nach erfolgreichem ES-Index.",
+      "rollback": "Consumer-Offset zurücksetzen auf letzten stabilen Offset.",
+      "security_checks": ["Keine sensiblen Daten in Kafka-Logs", "SASL-Authentifizierung"],
+      "monitoring_metrics": ["consumer_lag", "indexing_rate_docs_per_sec", "indexing_error_rate"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-09",
+      "milestone": "M-03",
+      "title": "spaCy Named Entity Recognition (NER) implementieren",
+      "description": "Integriere spaCy en_core_web_sm. Extrahiere PERSON, ORG, GPE. Regex-basierte BTC/XMR-Wallet-Extraktion.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 6.3; hyper_mega_c2_systembuch.md.resolved Kap. 4.3; architecture.md.resolved Pipeline"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-03",
+      "end_date": "2026-04-07",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08"],
+      "acceptance_criteria": [
+        "NER erkennt PERSON/ORG/GPE korrekt",
+        "BTC/XMR-Regex matcht gültige Wallet-Adressen",
+        "Performance < 100 ms pro Dokument"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "mittel",
+        "description": "spaCy-Modell zu groß für Cloud-Container",
+        "countermeasure": "en_core_web_sm (kleinstes Modell) nutzen"
+      },
+      "test_cases": ["Unit-Tests mit Testsätzen", "10 BTC-Wallets im Regex-Test", "Performance 1000 Dokumente"],
+      "deliverables": ["nlp/ner.py", "nlp/wallet_extractor.py", "tests/test_ner.py"],
+      "cicd_steps": ["Unit-Tests in GitHub Actions"],
+      "checkpoint": "Modell-Version in requirements.txt pinnen.",
+      "rollback": "ENABLE_NER=false",
+      "security_checks": ["Wallet-Daten nur im Rahmen OSINT-Analyse"],
+      "monitoring_metrics": ["ner_entities_extracted_total", "ner_processing_time_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-10",
+      "milestone": "M-03",
+      "title": "VADER Sentiment-Analyse implementieren",
+      "description": "Integriere vaderSentiment. Berechne Compound-Score. Speichere sentiment_score und sentiment_label im ES-Index.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Pipeline: VADER Sentiment Analysis; task.md.resolved Abschnitt 2"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 1,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-05",
+      "end_date": "2026-04-07",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08"],
+      "acceptance_criteria": [
+        "Score für positiven/negativen Test-Text korrekt",
+        "Feld sentiment_score im ES-Dokument vorhanden",
+        "Performance < 10 ms pro Dokument"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "VADER schlecht bei Fremdsprachen",
+        "countermeasure": "Sentiment nur nach Übersetzung anwenden"
+      },
+      "test_cases": ["5 positiver / 5 negativer Testsätze", "Compound-Score prüfen"],
+      "deliverables": ["nlp/sentiment.py", "tests/test_sentiment.py"],
+      "cicd_steps": ["Unit-Tests"],
+      "checkpoint": "VADER-Lexikon-Version pinnen.",
+      "rollback": "ENABLE_SENTIMENT=false",
+      "security_checks": ["Keine personenbezogenen Daten in Sentiment-Logs"],
+      "monitoring_metrics": ["sentiment_processing_time_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-11",
+      "milestone": "M-03",
+      "title": "Cross-Linguale Übersetzungs-Pipeline",
+      "description": "Integriere langdetect für Sprachdetection. Übersetzung via deep-translator. Originaltext erhalten.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 6.2; hyper_mega_c2_systembuch.md.resolved Kap. 4.2; architecture.md.resolved Pipeline"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-05",
+      "end_date": "2026-04-09",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08"],
+      "acceptance_criteria": [
+        "Russischer Text wird als ru erkannt und korrekt übersetzt",
+        "language-Feld im ES-Dokument vorhanden",
+        "Performance-Overhead < 200 ms"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Translation-API Rate-Limits",
+        "countermeasure": "Caching, Batching, Fallback auf Offline-Modell"
+      },
+      "test_cases": ["5 Sprachen testen DE/FR/RU/ZH/AR", "API-Rate-Limit-Test"],
+      "deliverables": ["nlp/translator.py", "nlp/lang_detector.py"],
+      "cicd_steps": ["Unit-Tests mit Mock-Translation"],
+      "checkpoint": "API-Key in Secrets; Rate-Limit-Counter in Redis.",
+      "rollback": "ENABLE_TRANSLATION=false",
+      "security_checks": ["Kein Plaintext-API-Key", "HTTPS zu Translation-API"],
+      "monitoring_metrics": ["translation_api_calls_total", "translation_errors", "translation_latency_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-12",
+      "milestone": "M-03",
+      "title": "Sentence-Transformer Vektorembeddings generieren",
+      "description": "Integriere sentence-transformers/all-MiniLM-L6-v2. Wandle Text in 384-dimensionalen Vektor um. Beim Start API Modell vorladen.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 4.1; hyper_mega_c2_systembuch.md.resolved Kap. 4+5; architecture.md.resolved"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-08",
+      "end_date": "2026-04-11",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08", "T-11"],
+      "acceptance_criteria": [
+        "Embedding für Text generiert",
+        "Vektor hat genau 384 Dimensionen",
+        "kNN-Suche liefert semantisch ähnliche Dokumente",
+        "Warm-Up < 30 s"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "mittel",
+        "description": "Modell-Download bei Start zu langsam",
+        "countermeasure": "Modell im Docker-Image vorbaken"
+      },
+      "test_cases": ["len(embedding) == 384", "Cosinus-Ähnlichkeit > 0.8", "Performance < 50 ms pro Dokument"],
+      "deliverables": ["api/embeddings.py", "Dockerfile (Modell inkludiert)"],
+      "cicd_steps": ["Unit-Test: Dimension prüfen", "Smoke-Test nach Deploy"],
+      "checkpoint": "Modell-Version in requirements.txt pinnen.",
+      "rollback": "BM25-Only-Suche als Fallback.",
+      "security_checks": ["Modell aus vertrauensw. Quelle", "Kein externer API-Call zur Laufzeit"],
+      "monitoring_metrics": ["embedding_generation_time_ms", "embedding_queue_length"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-13",
+      "milestone": "M-03",
+      "title": "Tesseract OCR für Bild-zu-Text-Konvertierung",
+      "description": "OCR-Modul: Bilder per requests laden, pytesseract + OpenCV Text extrahieren, an Dokument-Content anhängen.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 6.1; hyper_mega_c2_systembuch.md.resolved Kap. 4.1"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-14",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08"],
+      "acceptance_criteria": [
+        "Text aus Test-Screenshot korrekt extrahiert",
+        "ocr_used=true im Dokument",
+        "Performance < 2 s pro Bild"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "Tesseract schlägt bei niedrig-auflösenden Bildern fehl",
+        "countermeasure": "Mindestresolution-Filter, Fallback leer string"
+      },
+      "test_cases": ["Screenshot mit bekanntem Text", "Leeres Bild (Fallback)", "Bild > 5 MB (übersprungen)"],
+      "deliverables": ["nlp/ocr.py", "tests/test_ocr.py"],
+      "cicd_steps": ["Unit-Tests mit Sample-Images"],
+      "checkpoint": "Tesseract-Version in Docker pinnen.",
+      "rollback": "ENABLE_OCR=false",
+      "security_checks": ["Bilder nur im RAM", "Keine persistente Speicherung von Bilddaten"],
+      "monitoring_metrics": ["ocr_success_rate", "ocr_processing_time_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-14",
+      "milestone": "M-03",
+      "title": "Ghost-Media Modul: YouTube-Untertitel-Extraktion",
+      "description": "Erkenne Video-Plattform-URLs. Nutze youtube-transcript-api und yt-dlp für Closed-Captions ohne Video-Playback.",
+      "source": {
+        "file": "protokollbericht.md.resolved",
+        "section": "Abschnitt 6.4; hyper_mega_c2_systembuch.md.resolved Kap. 4.4"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-16",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-04"],
+      "acceptance_criteria": [
+        "YouTube-URL → Transkript extrahiert ohne Video-Playback",
+        "video_transcript=true im Dokument-Feld",
+        "Performance < 5 s"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "mittel",
+        "description": "YouTube ändert API",
+        "countermeasure": "yt-dlp regelmäßig aktualisieren, Fallback auf leeren Content"
+      },
+      "test_cases": ["Bekannte YouTube-URL mit Untertiteln", "URL ohne Untertitel (Fallback)"],
+      "deliverables": ["crawler/video_module.py"],
+      "cicd_steps": ["Unit-Tests mit Mock-API"],
+      "checkpoint": "yt-dlp-Version pinnen; wöchentliches Update prüfen.",
+      "rollback": "ENABLE_VIDEO_TRANSCRIPTION=false",
+      "security_checks": ["Keine Cookies oder Credentials für YouTube API"],
+      "monitoring_metrics": ["video_transcription_success_rate", "video_transcription_time_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-15",
+      "milestone": "M-03",
+      "title": "MinHash-Deduplication und TF-IDF Trending-Analyzer",
+      "description": "Story-Deduplication via MinHash LSH Clustering. TF-IDF Trend-Analyzer über 24-Stunden-Fenster. Ergebnisse in Redis Hot-Cache.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Pipeline: MinHash, TF-IDF; task.md.resolved Abschnitt 2+7"
+      },
+      "owner": "TBD",
+      "priority": "P2",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-14",
+      "end_date": "2026-04-18",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-08"],
+      "acceptance_criteria": [
+        "Zwei fast-identische Artikel → Dedup erkannt",
+        "Trending-Topics nach 24 h plausibel",
+        "API-Endpunkt liefert JSON"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "mittel",
+        "description": "False-Positive-Dedup bei ähnlichen Artikeln",
+        "countermeasure": "Schwellwert konfigurierbar"
+      },
+      "test_cases": ["5 Duplikat-Paare", "5 ähnliche aber verschiedene Paare", "Trending-API nach Seeding"],
+      "deliverables": ["nlp/dedup.py", "nlp/trending.py"],
+      "cicd_steps": ["Unit-Tests"],
+      "checkpoint": "MinHash-Schwellwert in Config externalisieren.",
+      "rollback": "Dedup deaktivierbar per Flag.",
+      "security_checks": ["Keine PII in Trending-Daten"],
+      "monitoring_metrics": ["dedup_rate_percent", "trending_refresh_interval_sec"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-16",
+      "milestone": "M-04",
+      "title": "FastAPI Backend: alle Endpunkte, Rate-Limiting, Auth",
+      "description": "Vollständige Implementierung: POST /api/search, GET /api/sources, GET /api/trending, GET /api/stats, GET /api/health, WebSocket /api/live. Rate-Limiting via Redis. CORS. Swagger-Docs.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Abschnitt 5; protokollbericht.md.resolved Abschnitt 4.3; hyper_mega_c2_systembuch.md.resolved Kap. 2.2; architecture.md.resolved API Layer"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 4,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-18",
+      "end_date": "2026-04-25",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-02", "T-03", "T-08", "T-12"],
+      "acceptance_criteria": [
+        "Alle Endpunkte antworten korrekt",
+        "Rate-Limiting blockiert nach 1000 req/min",
+        "WebSocket liefert Live-Updates",
+        "Swagger-Docs unter /docs verfügbar",
+        "Response-Time < 100 ms P95"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Semantic-Search-Latenz zu hoch",
+        "countermeasure": "Query-Cache in Redis (TTL 5 min), Approximate kNN"
+      },
+      "test_cases": [
+        "Jeder Endpunkt mit gültigen + ungültigen Inputs",
+        "Rate-Limit-Test",
+        "WebSocket-Connect-Test",
+        "Performance-Test 1000 gleichzeitige Requests"
+      ],
+      "deliverables": ["api/main.py", "api/routes/", "api/middleware.py", "OpenAPI-Spec"],
+      "cicd_steps": ["Integration-Tests mit Testcontainer (ES + Redis)"],
+      "checkpoint": "API-Keys in GitHub Secrets; kein Hard-Coding.",
+      "rollback": "Blue-Green Deployment; alten Pod behalten.",
+      "security_checks": ["Input-Validation Pydantic", "SQL-Injection-Prevention", "XSS-Protection", "HTTPS erzwingen"],
+      "monitoring_metrics": ["api_request_latency_ms P50/P95/P99", "api_error_rate", "websocket_connections_active"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-17",
+      "milestone": "M-04",
+      "title": "1000 Nachrichtenquellen kuratieren und importieren",
+      "description": "1000 Quellen aus DE/US/UK/FR/ES/IT/RU/CN/JP in PostgreSQL. NewsAPI-Integration für neue Quellen.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Liste 1000 Nachrichtenseiten; Spezielle Anforderungen"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-04-20",
+      "end_date": "2026-04-24",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-03"],
+      "acceptance_criteria": [
+        "1000 Quellen in DB importiert",
+        "API /api/sources liefert vollständige Liste",
+        "Mind. 10 Quellen pro Sprache"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "Quellen veralten schnell",
+        "countermeasure": "Automatisches Health-Check der Quellen wöchentlich"
+      },
+      "test_cases": ["Alle 1000 Quellen in DB", "Pagination", "Filterung nach Sprache"],
+      "deliverables": ["data/sources_1000.json", "scripts/import_sources.py"],
+      "cicd_steps": ["Import-Script als Setup-Step"],
+      "checkpoint": "Backup der Source-Liste vor Massenimport.",
+      "rollback": "TRUNCATE sources; pg_restore",
+      "security_checks": ["Domain-Reputation-Check; keine Spam/Malware-Domains"],
+      "monitoring_metrics": ["sources_active_count", "sources_last_crawled_age_hours"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-18",
+      "milestone": "M-05",
+      "title": "Next.js Mission Control Hub implementieren",
+      "description": "Zentrales Einstiegsportal: Glassmorphism Dark Mode, WebGL-Shader, Boot-Sequence, drei 3D-Kacheln, Framer Motion.",
+      "source": {
+        "file": "master_3d_web_plan.md.resolved",
+        "section": "Abschnitt 2.1, 6.1, 6.2; hyper_mega_c2_systembuch.md.resolved Kap. 7"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 4,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-08",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-16"],
+      "acceptance_criteria": [
+        "Hub lädt in < 3 s",
+        "Drei Kacheln sichtbar",
+        "Hover-Tilt-Effekt",
+        "HTTPS-Link öffentlich"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "WebGL-Performance auf mobilen Geräten",
+        "countermeasure": "Fallback auf CSS-Animation"
+      },
+      "test_cases": ["Desktop/Mobile Viewport", "Lighthouse > 85", "Accessibility WCAG 2.1 AA"],
+      "deliverables": ["frontend/src/app/page.tsx", "frontend/src/components/Hub3D.tsx"],
+      "cicd_steps": ["Vercel Deploy via GitHub Actions"],
+      "checkpoint": "NEXT_PUBLIC_API_URL in Vercel Environment konfiguriert.",
+      "rollback": "Vercel Instant Rollback.",
+      "security_checks": ["CSP-Header", "kein eval()", "HTTPS erzwungen"],
+      "monitoring_metrics": ["Vercel Web Analytics", "Core Web Vitals"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-19",
+      "milestone": "M-05",
+      "title": "Targeting & Crawler Control 3D-Frontend",
+      "description": "Smart-Paste URL-Extraktion, URL-Pills, Deep-Mode-Schalter, God-Tier-Launch-Button, Warpdrive-Animation, API-Call POST /api/crawl.",
+      "source": {
+        "file": "master_3d_web_plan.md.resolved",
+        "section": "Abschnitt 2.2, 6.3, 6.4, 7.1; bedienungsanleitung.md.resolved Teil 1"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 4,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-05-06",
+      "end_date": "2026-05-13",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-16", "T-18"],
+      "acceptance_criteria": [
+        "Smart-Paste extrahiert URLs",
+        "URL erscheint als Pill mit Favicon",
+        "Launch-Button feuert API-Call",
+        "Warpdrive-Animation"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "Clipboard-API auf manchen Browsern eingeschränkt",
+        "countermeasure": "Fallback auf manuelle Textarea"
+      },
+      "test_cases": ["Paste 10 URLs", "Deep-Mode aktivieren", "Launch-Button", "API-Mock für Fehlerfall"],
+      "deliverables": ["frontend/src/app/targeting/page.tsx", "frontend/src/components/TargetPill.tsx"],
+      "cicd_steps": ["Vercel Deploy", "E2E-Test mit Playwright"],
+      "checkpoint": "API-URL in Umgebungsvariable.",
+      "rollback": "Vercel Instant Rollback.",
+      "security_checks": ["URL-Validierung vor API-Call", "Kein XSS in URL-Pills"],
+      "monitoring_metrics": ["Crawl-Launch-Events"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-20",
+      "milestone": "M-05",
+      "title": "3D Matrix Search: Suchinterface + 3D Force Graph",
+      "description": "Glassmorphism Suchleiste, Semantic-AI-Toggle, Framer Motion Stagger-Cards, react-force-graph-3d mit PERSON/ORG/Wallet-Knoten, Metadaten-Icons, Match-Score.",
+      "source": {
+        "file": "master_3d_web_plan.md.resolved",
+        "section": "Abschnitt 2.3, 7.2, 7.3, 7.4; protokollbericht.md.resolved Abschnitt 5; hyper_mega_c2_systembuch.md.resolved Kap. 7"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 6,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-05-10",
+      "end_date": "2026-05-22",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-16", "T-18"],
+      "acceptance_criteria": [
+        "Suche liefert Ergebnisse",
+        "3D Graph rendert Knoten und Links",
+        "Karten zeigen Metadaten-Icons",
+        "Deep-Web-Badge bei .onion-Quellen"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "mittel",
+        "description": "react-force-graph-3d SSR-Inkompatibilität mit Next.js",
+        "countermeasure": "Dynamic Import mit ssr: false"
+      },
+      "test_cases": ["Suche hack", "Graph rendert", "Deep-Web-Badge", "Semantic-Toggle", "Mobile"],
+      "deliverables": [
+        "frontend/src/app/search/page.tsx",
+        "frontend/src/components/ForceGraph3D.tsx",
+        "frontend/src/components/ResultCard.tsx"
+      ],
+      "cicd_steps": ["Vercel Deploy", "Playwright E2E"],
+      "checkpoint": "Three.js Version auf 0.170.0 pinnen.",
+      "rollback": "Vercel Instant Rollback; Fallback-Liste ohne 3D-Graph.",
+      "security_checks": ["XSS-Schutz sanitize-html", "kein eval"],
+      "monitoring_metrics": ["search_requests_total", "search_latency_ms", "graph_render_time_ms"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-21",
+      "milestone": "M-05",
+      "title": "System Health & Analytics Dashboard",
+      "description": "Live-Feed-Ticker, Gauge-Chart, Quantum-Stealth-Status, Service-Indikatoren, Nuclear-Reset mit Passwort.",
+      "source": {
+        "file": "master_3d_web_plan.md.resolved",
+        "section": "Abschnitt 2.4; bedienungsanleitung.md.resolved Teil 2"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 4,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-05-20",
+      "end_date": "2026-05-27",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-16", "T-18"],
+      "acceptance_criteria": [
+        "Live-Feed < 2 s Latenz",
+        "Gauge aktualisiert sich",
+        "Nuclear-Reset nur nach Passwort"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "WebSocket-Verbindung bricht auf mobilen Geräten ab",
+        "countermeasure": "Auto-Reconnect-Logik"
+      },
+      "test_cases": ["Health-API mock", "Live-Feed-Event simulieren", "Reset mit falschem Passwort"],
+      "deliverables": ["frontend/src/app/health/page.tsx", "frontend/src/components/GaugeChart.tsx"],
+      "cicd_steps": ["Vercel Deploy"],
+      "checkpoint": "Nuclear-Reset-Passwort in Secrets.",
+      "rollback": "Vercel Instant Rollback.",
+      "security_checks": ["Reset-Passwort via HTTPS + JWT", "Rate-Limiting für Reset-Endpoint"],
+      "monitoring_metrics": ["WebSocket-Reconnect-Rate", "Live-Feed-Latenz"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-22",
+      "milestone": "M-05",
+      "title": "Automatisches 1-Click Cloud-Deployment",
+      "description": "Next.js auf Vercel oder Hugging Face Static Space deployen. GitHub Actions CD-Workflow. Öffentlicher HTTPS-Link.",
+      "source": {
+        "file": "master_3d_web_plan.md.resolved",
+        "section": "Abschnitt 5; bedienungsanleitung.md.resolved Teil 1 Schritt 1; hyper_mega_c2_systembuch.md.resolved Kap. 2"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-05-28",
+      "end_date": "2026-06-02",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-18", "T-19", "T-20", "T-21"],
+      "acceptance_criteria": [
+        "Öffentlicher HTTPS-Link erreichbar",
+        "Deploy-Zeit < 5 min nach Push",
+        "Kein Terminal nötig für Nutzer"
+      ],
+      "risk": {
+        "probability": "hoch",
+        "impact": "mittel",
+        "description": "Hugging Face Free-Tier-Limits",
+        "countermeasure": "Pro-Account oder Backup auf Vercel"
+      },
+      "test_cases": ["Push auf main → Auto-Deploy", "Link auf Desktop+Mobil", "API-Calls funktionieren"],
+      "deliverables": [".github/workflows/deploy.yml", "vercel.json"],
+      "cicd_steps": ["GitHub Actions Workflow für Auto-Deploy"],
+      "checkpoint": "Deploy-URL in Release-Notes dokumentieren.",
+      "rollback": "Vercel Instant Rollback; Hugging Face Space zurückrollen.",
+      "security_checks": ["Deployment-Tokens in GitHub Secrets", "Keine API-Keys im Frontend-Code"],
+      "monitoring_metrics": ["Vercel Deploy-Status", "Uptime-Check alle 5 min"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-23",
+      "milestone": "M-06",
+      "title": "Prometheus Metriken + Grafana Dashboards",
+      "description": "Prometheus-Metriken in allen Services. Grafana-Dashboards. Alerting via Discord/Email.",
+      "source": {
+        "file": "architecture.md.resolved",
+        "section": "Ops Layer: Prometheus, Grafana; task.md.resolved Abschnitt 7"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-08",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01", "T-08", "T-16"],
+      "acceptance_criteria": [
+        "Alle Metriken in Prometheus sichtbar",
+        "Grafana-Dashboards zeigen Live-Daten",
+        "Alert ausgelöst bei Service-Ausfall"
+      ],
+      "risk": {
+        "probability": "niedrig",
+        "impact": "mittel",
+        "description": "Zu viele Metriken → Prometheus-Speicherproblem",
+        "countermeasure": "Retention-Policy, nur kritische Metriken"
+      },
+      "test_cases": ["Prometheus /metrics erreichbar", "Grafana-Dashboard lädt", "Alert-Test"],
+      "deliverables": ["monitoring/prometheus.yml", "monitoring/grafana_dashboards/", "monitoring/alerting_rules.yml"],
+      "cicd_steps": ["Dashboard-as-Code via Grafana API"],
+      "checkpoint": "Alert-Routing konfigurieren.",
+      "rollback": "n/a (read-only)",
+      "security_checks": ["Prometheus + Grafana nicht öffentlich", "Basic Auth"],
+      "monitoring_metrics": ["Prometheus Self-Monitoring"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-24",
+      "milestone": "M-06",
+      "title": "GitHub Actions CI/CD Pipeline einrichten",
+      "description": "CI: Lint, Unit-Tests, Integration-Tests. CD: Auto-Deploy. Security-Scan: pip-audit, npm audit, Bandit, Container-Scan.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Abschnitt 8 (Deployment, CI/CD)"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-06-05",
+      "end_date": "2026-06-10",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-22"],
+      "acceptance_criteria": [
+        "CI läuft bei jedem PR",
+        "CD deployed automatisch",
+        "Security-Scan blockiert bei kritischen CVEs"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "niedrig",
+        "description": "Lange CI-Laufzeiten",
+        "countermeasure": "Caching, parallele Jobs"
+      },
+      "test_cases": ["PR mit Fehler → CI rot", "Push main → Deploy grün", "Dependency CVE → Scan rot"],
+      "deliverables": [".github/workflows/ci.yml", ".github/workflows/cd.yml", ".github/workflows/security.yml"],
+      "cicd_steps": ["Selbstreferenziell"],
+      "checkpoint": "Secrets in GitHub Secrets.",
+      "rollback": "Workflow deaktivieren.",
+      "security_checks": ["GITHUB_TOKEN minimal scoped", "Secrets rotation"],
+      "monitoring_metrics": ["GitHub Actions Job-Success-Rate"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-25",
+      "milestone": "M-06",
+      "title": "Security-Härtung: Input-Validation, Auth, HTTPS",
+      "description": "Pydantic Input-Validation, SQL-Injection-Prevention, XSS-Schutz, HTTPS, JWT-Auth, Rate-Limiting, Dependency-Audit.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Code-Qualität + Lizenz; Abschnitt 5 Rate-Limiting"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-13",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-16", "T-22"],
+      "acceptance_criteria": [
+        "OWASP Top 10 adressiert",
+        "bandit + npm audit sauber",
+        "HTTPS erzwungen",
+        "Admin-Reset hinter Auth"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Unbekannte Vulnerabilities in Abhängigkeiten",
+        "countermeasure": "Wöchentlicher Dependency-Scan via Dependabot"
+      },
+      "test_cases": ["SQL-Injection-Test", "XSS-Test", "Auth-Test ungültiger JWT", "Rate-Limit-Test"],
+      "deliverables": ["Security-Checklist", "SECURITY.md"],
+      "cicd_steps": ["Security-Scan in GitHub Actions"],
+      "checkpoint": "Penetration-Test vor Go-Live.",
+      "rollback": "Hotfix-Branch; schneller Deploy via CD.",
+      "security_checks": ["OWASP Top 10", "Bandit", "npm audit", "Dependabot"],
+      "monitoring_metrics": ["auth_failed_attempts_total", "rate_limit_blocks_total"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-26",
+      "milestone": "M-07",
+      "title": "End-to-End Beta-Test und Abnahme",
+      "description": "Vollständiger E2E-Test: Targeting → Crawl → Indexierung → Suche → 3D-Graph. Performance-Benchmarks. Lighthouse > 85.",
+      "source": {
+        "file": "bedienungsanleitung.md.resolved",
+        "section": "Alle Teile; task.md.resolved Spezielle Anforderungen Performance"
+      },
+      "owner": "TBD",
+      "priority": "P0",
+      "estimate_person_days": 3,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-07-15",
+      "end_date": "2026-07-22",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-01", "T-02", "T-03", "T-04", "T-05", "T-06", "T-07", "T-08", "T-09", "T-10", "T-11", "T-12", "T-13", "T-14", "T-15", "T-16", "T-17", "T-18", "T-19", "T-20", "T-21", "T-22", "T-23", "T-24", "T-25"],
+      "acceptance_criteria": [
+        "Alle Bedienungsanleitung-Schritte erfolgreich",
+        "10.000 URLs in < 10 min",
+        "100.000 Dokumente in < 5 min",
+        "Query < 50 ms P95",
+        "Lighthouse > 85"
+      ],
+      "risk": {
+        "probability": "mittel",
+        "impact": "hoch",
+        "description": "Performance-Benchmarks nicht erreichbar",
+        "countermeasure": "Horizontal Scaling, Query-Optimierung"
+      },
+      "test_cases": ["Vollständiger Durchlauf nach Bedienungsanleitung", "Load-Test mit k6", "Lighthouse-CI"],
+      "deliverables": ["Beta-Test-Report", "Performance-Benchmark-Report"],
+      "cicd_steps": ["Automatisierter E2E-Test-Report nach Deploy"],
+      "checkpoint": "Go/No-Go-Entscheidung nach Beta-Test.",
+      "rollback": "Beta-Phase verlängern; kritische Bugs fixen.",
+      "security_checks": ["Final Security-Review", "Penetration-Test"],
+      "monitoring_metrics": ["Alle definierten Metriken aktiv", "Alerting getestet"],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    },
+    {
+      "id": "T-27",
+      "milestone": "M-07",
+      "title": "Vollständige Dokumentation erstellen",
+      "description": "README, Lizenzhinweis, Inline-Kommentare, TypeScript-Types, Docstrings, OpenAPI-Spec, CONTRIBUTING.md.",
+      "source": {
+        "file": "task.md.resolved",
+        "section": "Code-Qualität + Lizenz"
+      },
+      "owner": "TBD",
+      "priority": "P1",
+      "estimate_person_days": 2,
+      "estimate_type": "VORSCHLAG",
+      "start_date": "2026-07-22",
+      "end_date": "2026-07-28",
+      "date_type": "VORSCHLAG",
+      "dependencies": ["T-26"],
+      "acceptance_criteria": [
+        "README vollständig",
+        "Lizenzhinweis vorhanden",
+        "OpenAPI-Spec vollständig",
+        "Alle öffentlichen Funktionen dokumentiert"
+      ],
+      "risk": {
+        "probability": "niedrig",
+        "impact": "mittel",
+        "description": "Dokumentation veraltet schnell",
+        "countermeasure": "Docs-as-Code, automatisch aus Code generiert"
+      },
+      "test_cases": ["README-Schritt-für-Schritt-Durchlauf", "OpenAPI-Spec validieren"],
+      "deliverables": ["README.md", "SECURITY.md", "CONTRIBUTING.md", "OpenAPI-Spec"],
+      "cicd_steps": ["Docs-Validierung in CI"],
+      "checkpoint": "Lizenzhinweis vor Go-Live prüfen.",
+      "rollback": "n/a",
+      "security_checks": ["Keine Credentials in Dokumentation"],
+      "monitoring_metrics": [],
+      "audit_log": {
+        "created_at": "2026-03-03T05:38:16Z",
+        "created_by": "GitHub Copilot AI Agent",
+        "approved_by": "TBD",
+        "approved_at": null
+      }
+    }
+  ],
+  "contradictions": [
+    {
+      "id": "W-01",
+      "conflict": "Datenbank-Backend: Elasticsearch vs. LanceDB",
+      "source_a": "architecture.md.resolved: Elasticsearch 8.x",
+      "source_b": "hyper_mega_c2_systembuch.md.resolved: LanceDB (serverless)",
+      "recommendation": "Elasticsearch für Produktions-Volumen; LanceDB als Fallback für Cloud-Free-Tier. Beide via Abstraktionsschicht."
+    },
+    {
+      "id": "W-02",
+      "conflict": "Frontend-Deployment: Lokal vs. Cloud",
+      "source_a": "bedienungsanleitung.md.resolved: localhost:3000",
+      "source_b": "master_3d_web_plan.md.resolved: Vercel/Hugging Face Cloud",
+      "recommendation": "Cloud-Deployment als primäres Ziel; lokaler Dev-Mode bleibt."
+    },
+    {
+      "id": "W-03",
+      "conflict": "Port-Konfiguration: 3005/8005 vs. 3000/8000",
+      "source_a": "walkthrough.md.resolved: 3005/8005",
+      "source_b": "walkthrough_ultimate.md.resolved: 3000/8000",
+      "recommendation": "3000/8000 als Standard; 3005/8005 als Alternative in .env.example dokumentieren."
+    },
+    {
+      "id": "W-04",
+      "conflict": "Admin-Interface: Gradio vs. Next.js",
+      "source_a": "hyper_mega_c2_systembuch.md.resolved Kap. 6: Gradio",
+      "source_b": "master_3d_web_plan.md.resolved Abschnitt 2.2: Next.js-Targeting-UI",
+      "recommendation": "Next.js-Targeting-UI als Ziel; Gradio kurzfristig als Fallback."
+    }
+  ],
+  "control_report": {
+    "summary": {
+      "total_tasks": 27,
+      "p0_tasks": 8,
+      "p1_tasks": 9,
+      "p2_tasks": 10,
+      "total_milestones": 7,
+      "contradictions_documented": 4,
+      "all_dates_type": "VORSCHLAG"
+    },
+    "checklist": [
+      {"id": "T-01", "title": "Docker-Compose", "status": "Offen"},
+      {"id": "T-02", "title": "ES-Schema", "status": "Offen"},
+      {"id": "T-03", "title": "PostgreSQL Schema", "status": "Offen"},
+      {"id": "T-04", "title": "Scrapy Crawler", "status": "Offen"},
+      {"id": "T-05", "title": "Playwright Stealth", "status": "Offen"},
+      {"id": "T-06", "title": "Tor Proxy", "status": "Offen"},
+      {"id": "T-07", "title": "PDF/DOCX Extraktion", "status": "Offen"},
+      {"id": "T-08", "title": "Kafka Consumer", "status": "Offen"},
+      {"id": "T-09", "title": "spaCy NER", "status": "Offen"},
+      {"id": "T-10", "title": "VADER Sentiment", "status": "Offen"},
+      {"id": "T-11", "title": "Translation Pipeline", "status": "Offen"},
+      {"id": "T-12", "title": "Embeddings", "status": "Offen"},
+      {"id": "T-13", "title": "OCR Tesseract", "status": "Offen"},
+      {"id": "T-14", "title": "Video Transkription", "status": "Offen"},
+      {"id": "T-15", "title": "MinHash + TF-IDF", "status": "Offen"},
+      {"id": "T-16", "title": "FastAPI Backend", "status": "Offen"},
+      {"id": "T-17", "title": "1000 Quellen", "status": "Offen"},
+      {"id": "T-18", "title": "Hub Frontend", "status": "Offen"},
+      {"id": "T-19", "title": "Targeting Frontend", "status": "Offen"},
+      {"id": "T-20", "title": "3D Search Frontend", "status": "Offen"},
+      {"id": "T-21", "title": "Health Dashboard", "status": "Offen"},
+      {"id": "T-22", "title": "Cloud-Deployment", "status": "Offen"},
+      {"id": "T-23", "title": "Prometheus/Grafana", "status": "Offen"},
+      {"id": "T-24", "title": "CI/CD Pipeline", "status": "Offen"},
+      {"id": "T-25", "title": "Security Checks", "status": "Offen"},
+      {"id": "T-26", "title": "Beta-Test", "status": "Offen"},
+      {"id": "T-27", "title": "Dokumentation", "status": "Offen"}
+    ],
+    "changelog": [
+      {
+        "date": "2026-03-03",
+        "change": "Initialer Projektplan aus Repository-Dokumenten generiert",
+        "author": "GitHub Copilot AI Agent",
+        "approved_by": "TBD"
+      }
+    ],
+    "audit_log": [
+      {
+        "timestamp": "2026-03-03T05:38:16Z",
+        "action": "Projektplan erstellt",
+        "actor": "GitHub Copilot AI Agent",
+        "details": "Ultra-Mega Projektplan generiert aus 8 Quelldokumenten"
+      }
+    ],
+    "approvals": [
+      {"name": "TBD", "role": "Projektleiter", "date": null},
+      {"name": "TBD", "role": "Tech Lead", "date": null},
+      {"name": "TBD", "role": "Security Officer", "date": null}
+    ]
+  }
+}
