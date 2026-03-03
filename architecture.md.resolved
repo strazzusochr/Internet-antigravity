@@ -1,0 +1,48 @@
+# SYSTEM ARCHITECTURE - GOD-TIER C2 SEARCH ENGINE
+
+```mermaid
+graph TD
+    subgraph Crawler_Layer ["1. CRAWLER LAYER (Distributed)"]
+        A1[1000+ Sources Registry] --> A2[Scrapy-Redis Spider]
+        A2 --> A3[Playwright JS Rendering]
+        A2 --> A4[Proxy Rotation / UA Spoofing]
+    end
+
+    subgraph Messaging ["2. STREAMING & QUEUE"]
+        A2 --> B1[Kafka: raw_html_payloads]
+        B1 --> B2[Redis: Crawl Deduplication]
+    end
+
+    subgraph Pipeline ["3. DATA PIPELINE (NLP & ML)"]
+        B1 --> C1[FastAPI Indexer Worker]
+        C1 --> C2[spaCy NER & langdetect]
+        C1 --> C3[VADER Sentiment Analysis]
+        C1 --> C4[MinHash LSH Clustering]
+        C1 --> C5[Story Deduplication]
+        C1 --> C6[Trend Analyzer - TF-IDF]
+    end
+
+    subgraph Storage ["4. PERSISTENCE LAYER"]
+        C1 --> D1[(Elasticsearch 8.x - Articles)]
+        C1 --> D2[(PostgreSQL - Source Registry)]
+        C6 --> D3[(Redis - Hot Trends & Cache)]
+    end
+
+    subgraph API ["5. API LAYER (Async)"]
+        D1 & D2 & D3 --> E1[FastAPI Backend]
+        E1 --> E2[REST Endpoints]
+        E1 --> E3[WebSockets - Live Pulse]
+    end
+
+    subgraph Frontend ["6. USER INTERFACE (Next.js)"]
+        E2 & E3 --> F1[Next.js Hub]
+        F1 --> F2[3D Matrix Scene - Three.js]
+        F1 --> F3[Live Pulse Ingress]
+        F1 --> F4[Timeline & Classic Views]
+    end
+
+    subgraph Ops ["7. MONITORING & OPS"]
+        D1 --> G1[Prometheus Metrics]
+        G1 --> G2[Grafana Dashboards]
+    end
+```

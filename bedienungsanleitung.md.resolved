@@ -1,0 +1,74 @@
+# 🚨 HYPER-MEGA C2 SEARCH ENGINE
+**Offizielles Operation Manual (Bedienungsanleitung)**
+
+Willkommen in der Kommandozentrale. Dieses System besteht aus drei entkoppelten, hochmodernen Komponenten:
+1. **Dem Cloud Crawler & API Backend (Hugging Face)**
+2. **Dem Cloud Admin Dashboard (Hugging Face)**
+3. **Der lokalen Suchmaschinen-Oberfläche (Dein PC)**
+
+Hier ist die lückenlose, professionelle Schritt-für-Schritt-Anleitung für jeden einzelnen Punkt.
+
+---
+
+## 🎯 Teil 1: Ziele vorgeben (Admin Dashboard)
+Das Admin Dashboard ist dein "Steuerrad". Hier befiehlst du dem System, welche Webseiten es indexieren soll.
+
+**Schritt 1:** Öffne das Admin Dashboard im Browser: 
+👉 [HyperMega C2 Admin (Hugging Face)](https://huggingface.co/spaces/Wrzzzrzr/HyperMega-C2-Admin)
+
+**Schritt 2:** Trage deine Ziel-URLs in das große Textfeld ein.
+* Wichtig: Pro Zeile darf nur exakt **eine URL** stehen. 
+* Du kannst sowohl normale `https://` URLs als auch `.onion` Deep Web Links einfügen.
+
+**Schritt 3:** Klicke auf den blauen Button **"🚀 Crawl Starten"**.
+* Unter dem Button taucht nach wenigen Sekunden eine JSON-Antwort auf (z.B. `"status": "crawl_initiated"`). Dies bedeutet, dein Befehl wurde erfolgreich an die Cloud-API und den Spider weitergeleitet. Du kannst das Dashboard nun schließen oder weitere URLs abschicken.
+
+---
+
+## ⚙️ Teil 2: Datenverarbeitung & Status Check
+Nachdem du den Befehl gegeben hast, arbeitet der **Spider** im Verborgenen. Er lädt die Seiten herunter, liest den Text aus Bildern (OCR), übersetzt Fremdsprachen (falls nötig), extrahiert Krypto-Wallets und wandelt den Text in "Vektor-Koordinaten" um ($k$-NN Embedding). All das wird in deiner Serverless Vector Database gespeichert.
+
+**Schritt 1:** Bleibe im [Admin Dashboard](https://huggingface.co/spaces/Wrzzzrzr/HyperMega-C2-Admin).
+
+**Schritt 2:** Klicke auf den grauen Button **"📊 System Status"**.
+* Du erhältst einen System-Check zurück.
+* Achte auf den Wert bei `"total_documents_indexed"`. Steigt diese Zahl, bedeutet das, dass der Spider erfolgreich Daten zieht und indexiert. Dieser Prozess läuft vollautomatisch im Hintergrund.
+
+---
+
+## 🌐 Teil 3: Die Suchmaschine nutzen (Lokales Frontend)
+Die gesammelten, aufbereiteten Daten liegen in der Cloud. Um diese hochprofessionell, visuell ansprechend und sicher zu durchsuchen, nutzt du dein lokales Suchmaschinen-Frontend im Glassmorphism-Design (Next.js).
+
+**Schritt 1:** Stelle sicher, dass der lokale Server läuft.
+* Falls er noch nicht läuft: Öffne ein Terminal (`cmd` oder VS Code) im Ordner `C:\Users\immer\Desktop\Internet antigravity\search-engine-master\frontend`.
+* Führe den Befehl `npm run dev` aus.
+
+**Schritt 2:** Öffne deinen normalen Browser (Brave Chrome, Firefox, etc.) auf deinem Windows PC.
+
+**Schritt 3:** Rufe die Adresse 👉 **http://localhost:3000** auf.
+* Das beeindruckende Such-Interface lädt.
+
+**Schritt 4:** Eine Suche durchführen.
+* Tippe deinen Suchbegriff (z.B. *Hacking*, *News*, *Crypto*) in das Haupt-Suchfeld ein.
+* **Pro-Tipp ("Semantic Mode"):** Aktiviere vor der Suche den Schalter für Semantic Search (falls vorhanden). Die KI sucht dann nicht nur nach dem exakten Wort, sondern nach der inhaltlichen Bedeutung deiner Anfrage über Vektor-Mathematik.
+
+**Schritt 5:** Analysiere die Resultate.
+* Klicke "Search" oder drücke Enter.
+* Nach wenigen Sekunden (die Daten werden live aus der Hugging Face Cloud geholt) flattern die Ergebnis-Karten butterweich über Animationen herein.
+* **3D Threat Graph:** Scrolle etwas nach unten. Falls das System verknüpfte Entitäten (Personen, Firmen, Wallets) auf den gefundenen Seiten extrahiert hat, baut sich live ein interaktiver 3D Nexus-Graph auf. Du kannst ihn mit der Maus rotieren!
+* **Metadaten:** Auf den Visitenkarten jedes Suchergebnisses siehst du direkt, ob es sich um eine Deep-Web Quelle handelt und ob EXIF/OCR Daten erfolgreich ausgelesen wurden.
+
+---
+
+## 🛠️ Notfall / Deep Analytics (API Direct Access)
+Bist du auf Analysten-Ebene unterwegs und möchtest die Datenbank direkt als Raw Data (.json) anzapfen (z.B. für eigene Skripte)?
+
+**Schritt 1:** Öffne die von der KI generierte "Swagger" API-Schnittstelle:
+👉 [HyperMega C2 API Docs](https://wrzzzrzr-hypermega-c2-api.hf.space/docs)
+
+**Schritt 2:** Hier kannst du per Klick auf *Try it out* die `/api/search` Schnittstelle manuell per API-Calling abfragen.
+* **Input:** `q` (dein Query).
+* **Output:** Rohes JSON, perfekt für maschinelle Weiterverarbeitung.
+
+---
+*System-Betriebsbereitschaft: 100%. Die Cloud gehört dir.*
