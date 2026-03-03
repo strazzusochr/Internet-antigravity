@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperMega C2 — System Health & Analytics</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --void: #050510;
+      --glass: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --cyan: #00f5ff;
+      --purple: #a855f7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    body { background: var(--void); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+    #nebula { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:9999; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px); }
+
+    /* Header */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2rem; border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px); background: rgba(5,5,16,.7);
+    }
+    header .back { color: var(--muted); text-decoration: none; font-size: .9rem; display:flex; align-items:center; gap:.5rem; transition: color .2s; }
+    header .back:hover { color: var(--cyan); }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    .uptime-badge { font-size:.75rem; padding:3px 10px; border-radius:99px; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:var(--green); }
+
+    /* Main grid */
+    .dashboard {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: auto;
+      gap: 1.2rem;
+      padding: 1.5rem;
+      max-width: 1400px; margin: 0 auto;
+    }
+    @media (max-width: 1100px) { .dashboard { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 600px)  { .dashboard { grid-template-columns: 1fr; } }
+
+    /* Panel base */
+    .panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 18px; padding: 1.4rem;
+      backdrop-filter: blur(18px);
+    }
+    .panel-title {
+      font-size: .75rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .panel-title .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+    /* Stat tiles */
+    .stat-tile { text-align: center; }
+    .stat-tile .big {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-tile .sub { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-top: .2rem; }
+    .stat-tile .delta { font-size: .72rem; margin-top: .2rem; }
+
+    /* Wide panels */
+    .col-span-2 { grid-column: span 2; }
+    .col-span-4 { grid-column: span 4; }
+    @media (max-width: 1100px) { .col-span-4 { grid-column: span 2; } .col-span-2 { grid-column: span 2; } }
+    @media (max-width: 600px)  { .col-span-4,.col-span-2 { grid-column: span 1; } }
+
+    /* Gauge */
+    .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .8rem; }
+    .gauge-canvas { width: 180px; height: 110px; }
+    .gauge-label { font-size: .85rem; color: var(--muted); text-align: center; }
+    .gauge-value { font-size: 1.6rem; font-weight: 800; color: var(--cyan); }
+
+    /* Live Feed */
+    .live-feed {
+      max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .feed-item {
+      display: flex; gap: .7rem; align-items: flex-start;
+      font-size: .78rem; line-height: 1.5; padding: .4rem .6rem;
+      border-radius: 8px; background: rgba(255,255,255,.03);
+      animation: feed-in .3s ease;
+    }
+    @keyframes feed-in { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+    .feed-icon { font-size: 1rem; flex-shrink: 0; margin-top: .1rem; }
+    .feed-time { color: var(--muted); white-space: nowrap; }
+    .feed-msg { color: var(--text); flex: 1; }
+    .feed-msg strong { color: var(--cyan); }
+
+    /* Latency chart */
+    .latency-chart { width: 100%; height: 120px; }
+
+    /* Spider table */
+    .spider-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .spider-table th { text-align: left; padding: .5rem .7rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
+    .spider-table td { padding: .55rem .7rem; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .spider-table tr:last-child td { border-bottom: none; }
+    .status-active { color: var(--green); }
+    .status-idle   { color: var(--yellow); }
+    .status-error  { color: var(--red); }
+    .progress-mini { height: 4px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; width: 80px; }
+    .progress-mini-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg,var(--cyan),var(--purple)); }
+
+    /* Nuclear reset */
+    .nuke-section { text-align: center; }
+    .nuke-cover {
+      border: 2px dashed rgba(239,68,68,.4); border-radius: 14px;
+      padding: 1.2rem; position: relative; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .nuke-cover:hover { border-color: var(--red); background: rgba(239,68,68,.05); }
+    .nuke-cover.open { border-color: var(--red); background: rgba(239,68,68,.05); }
+    .nuke-label { font-size: .7rem; color: var(--red); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem; }
+    .nuke-hint { font-size: .7rem; color: var(--muted); margin-top: .5rem; }
+    .nuke-inner { display: none; margin-top: 1rem; }
+    .nuke-cover.open .nuke-inner { display: block; }
+    .nuke-pw-row { display: flex; gap: .6rem; }
+    .nuke-pw { flex:1; padding: .6rem .8rem; background: rgba(0,0,0,.3); border: 1px solid rgba(239,68,68,.4); border-radius: 8px; color: var(--text); font-size: .85rem; outline: none; }
+    .nuke-pw:focus { border-color: var(--red); }
+    .btn-nuke {
+      padding: .6rem 1.1rem; border-radius: 8px; border: 1px solid var(--red);
+      background: rgba(239,68,68,.12); color: var(--red); cursor: pointer;
+      font-weight: 700; font-size: .85rem; transition: all .2s;
+    }
+    .btn-nuke:hover { background: rgba(239,68,68,.25); box-shadow: 0 0 16px rgba(239,68,68,.3); }
+
+    /* Sparkline colors */
+    .c-green { color: var(--green); }
+    .c-red   { color: var(--red); }
+    .c-orange { color: var(--orange); }
+
+    /* Toast */
+    #toast { position:fixed; bottom:2rem; right:2rem; z-index:300; background:rgba(10,10,30,.95); border:1px solid var(--cyan); border-radius:12px; padding:.9rem 1.4rem; color:var(--text); font-size:.9rem; transform:translateY(120%); transition:transform .3s; box-shadow:0 0 30px rgba(0,245,255,.2); max-width:320px; }
+    #toast.show { transform:translateY(0); }
+
+    /* Modal */
+    .modal-overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); align-items:center; justify-content:center; }
+    .modal-overlay.active { display:flex; }
+    .modal-box { background:rgba(10,10,30,.95); border:1px solid var(--cyan); border-radius:20px; padding:2rem; max-width:420px; width:90%; box-shadow:0 0 60px rgba(0,245,255,.2); animation:pop-in .25s ease; }
+    @keyframes pop-in { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+    .modal-box h4 { color:var(--cyan); margin-bottom:.8rem; }
+    .modal-box p  { color:var(--muted); font-size:.9rem; line-height:1.7; }
+    .modal-close { display:block; margin-top:1.5rem; padding:.6rem 1.5rem; border:1px solid var(--border); border-radius:8px; background:none; color:var(--muted); cursor:pointer; transition:all .2s; }
+    .modal-close:hover { border-color:var(--cyan); color:var(--cyan); }
+  </style>
+</head>
+<body>
+
+<canvas id="nebula"></canvas>
+
+<!-- Header -->
+<header>
+  <a href="index.html" class="back">← Mission Control</a>
+  <h1>📡 System Health &amp; Deep Analytics</h1>
+  <div class="uptime-badge">⬡ 99.94% Uptime</div>
+</header>
+
+<!-- Dashboard Grid -->
+<main class="dashboard">
+
+  <!-- Stat: Dokumente -->
+  <div class="panel stat-tile">
+    <div class="panel-title"><div class="dot" style="background:var(--cyan)"></div>Dokumente</div>
+    <div class="big" id="stat-docs">0</div>
+    <div class="sub">Gesamt indexiert</div>
+    <div class="delta c-green" id="docs-delta">▲ +0/h</div>
+  </div>
+
+  <!-- Stat: Spider -->
+  <div class="panel stat-tile">
+    <div class="panel-title"><div class="dot" style="background:var(--purple)"></div>Spider aktiv</div>
+    <div class="big" id="stat-spiders">0</div>
+    <div class="sub">Von 500 verfügbaren</div>
+    <div class="delta c-green">▲ Alle gesund</div>
+  </div>
+
+  <!-- Stat: Quellen -->
+  <div class="panel stat-tile">
+    <div class="panel-title"><div class="dot" style="background:var(--green)"></div>Aktive Quellen</div>
+    <div class="big">1 000</div>
+    <div class="sub">Nachrichtenseiten</div>
+    <div class="delta c-orange">▶ 3 Fehler</div>
+  </div>
+
+  <!-- Stat: Latenz -->
+  <div class="panel stat-tile">
+    <div class="panel-title"><div class="dot" style="background:var(--yellow)"></div>Query-Latenz P95</div>
+    <div class="big" id="stat-latency">0ms</div>
+    <div class="sub">Ziel: &lt;50 ms</div>
+    <div class="delta c-green" id="latency-delta">▲ Optimal</div>
+  </div>
+
+  <!-- Brain Size Gauge -->
+  <div class="panel col-span-2">
+    <div class="panel-title"><div class="dot" style="background:var(--purple)"></div>Brain Size — Datenbankgröße (LanceDB Vektor-Dimensionen)</div>
+    <div class="gauge-wrap">
+      <canvas class="gauge-canvas" id="gaugeCanvas"></canvas>
+      <div class="gauge-value" id="gaugeValue">0 Mrd.</div>
+      <div class="gauge-label">Vektor-Dimensionen gespeichert</div>
+    </div>
+  </div>
+
+  <!-- Live Feed -->
+  <div class="panel col-span-2">
+    <div class="panel-title">
+      <div class="dot" style="background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 1.5s ease-in-out infinite"></div>
+      Live Feed — Spider-Aktivität
+    </div>
+    <div class="live-feed" id="liveFeed"></div>
+  </div>
+
+  <!-- Latency Chart -->
+  <div class="panel col-span-2">
+    <div class="panel-title"><div class="dot" style="background:var(--yellow)"></div>Query-Latenz Verlauf (letzte 60s)</div>
+    <canvas class="latency-chart" id="latencyChart"></canvas>
+    <div style="display:flex;gap:1.5rem;font-size:.72rem;color:var(--muted);margin-top:.6rem">
+      <span><span style="color:var(--cyan)">■</span> P50: <strong id="p50">—</strong></span>
+      <span><span style="color:var(--purple)">■</span> P95: <strong id="p95">—</strong></span>
+      <span><span style="color:var(--red)">■</span> P99: <strong id="p99">—</strong></span>
+    </div>
+  </div>
+
+  <!-- Spider Fleet -->
+  <div class="panel col-span-2">
+    <div class="panel-title"><div class="dot" style="background:var(--cyan)"></div>Spider-Flotte Status</div>
+    <table class="spider-table">
+      <thead>
+        <tr>
+          <th>Spider</th>
+          <th>Ziel</th>
+          <th>Status</th>
+          <th>Fortschritt</th>
+          <th>Docs/min</th>
+        </tr>
+      </thead>
+      <tbody id="spiderTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Quantum Stealth + OCR -->
+  <div class="panel">
+    <div class="panel-title"><div class="dot" style="background:var(--green)"></div>Superkräfte — Status</div>
+    <div style="display:flex;flex-direction:column;gap:.7rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem">
+        <span>🛡 Quantum Stealth</span>
+        <span style="color:var(--green);font-size:.75rem">● AKTIV</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem">
+        <span>👁 Oculus Omnia (OCR)</span>
+        <span style="color:var(--green);font-size:.75rem">● AKTIV</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem">
+        <span>🌍 Global Tongue</span>
+        <span style="color:var(--yellow);font-size:.75rem">◐ BEREIT</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem">
+        <span>🕸 Thread Weaver (3D)</span>
+        <span style="color:var(--green);font-size:.75rem">● AKTIV</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem">
+        <span>🎬 Phantom Video</span>
+        <span style="color:var(--green);font-size:.75rem">● AKTIV</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nuclear Reset -->
+  <div class="panel nuke-section">
+    <div class="panel-title"><div class="dot" style="background:var(--red)"></div>System Reset</div>
+    <div class="nuke-cover" id="nukeCover" onclick="toggleNuke()">
+      <div class="nuke-label">⚠ Nuclear Reset — Alle Daten löschen</div>
+      <div style="font-size:2rem">☢</div>
+      <div class="nuke-hint">Klicken zum Öffnen der Sicherheitssperre</div>
+      <div class="nuke-inner" onclick="event.stopPropagation()">
+        <div style="font-size:.78rem;color:var(--red);margin-bottom:.8rem">⚠ WARNUNG: Löscht alle gecrawlten Daten und Indizes permanent!</div>
+        <div class="nuke-pw-row">
+          <input type="password" class="nuke-pw" id="nukePw" placeholder="Sicherheits-Passwort" />
+          <button class="btn-nuke" onclick="doNuke()">RESET</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Storage Breakdown -->
+  <div class="panel col-span-4">
+    <div class="panel-title"><div class="dot" style="background:var(--cyan)"></div>Storage Breakdown</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem">
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Hot Storage (30 Tage)</div>
+        <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:68%;height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple))"></div></div>
+        <div style="font-size:.75rem;color:var(--text);margin-top:.3rem">340 GB / 500 GB</div>
+      </div>
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Cold Storage (2 Jahre)</div>
+        <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:42%;height:100%;background:linear-gradient(90deg,var(--purple),var(--orange))"></div></div>
+        <div style="font-size:.75rem;color:var(--text);margin-top:.3rem">2.1 TB / 5 TB</div>
+      </div>
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Elasticsearch Index</div>
+        <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:55%;height:100%;background:linear-gradient(90deg,var(--orange),var(--yellow))"></div></div>
+        <div style="font-size:.75rem;color:var(--text);margin-top:.3rem">220 GB / 400 GB</div>
+      </div>
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">Redis Cache</div>
+        <div style="height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:28%;height:100%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+        <div style="font-size:.75rem;color:var(--text);margin-top:.3rem">14 GB / 50 GB</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h4 id="modalTitle">Info</h4>
+    <p id="modalBody"></p>
+    <button class="modal-close" onclick="closeModal()">Schließen ✕</button>
+  </div>
+</div>
+
+<style>
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+
+<script>
+// ── Nebula ──
+(function() {
+  const c = document.getElementById('nebula'), ctx = c.getContext('2d');
+  let W, H;
+  const resize = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+  resize(); addEventListener('resize', resize);
+  const orbs = [{x:.2,y:.3,r:300,hue:200},{x:.7,y:.7,r:250,hue:270},{x:.5,y:.1,r:200,hue:150}];
+  let t = 0;
+  (function draw() {
+    ctx.clearRect(0,0,W,H);
+    orbs.forEach((o,i) => {
+      const x=(o.x+Math.cos(t*.0003+i)*.1)*W, y=(o.y+Math.sin(t*.0004+i)*.12)*H;
+      const g=ctx.createRadialGradient(x,y,0,x,y,o.r);
+      g.addColorStop(0,`hsla(${o.hue},100%,60%,.05)`); g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    });
+    t++; requestAnimationFrame(draw);
+  })();
+})();
+
+// ── Animated counters ──
+function countTo(el, target, suffix='', dur=1800) {
+  let start=0, step=target/(dur/16);
+  const go=()=>{ start=Math.min(start+step,target); el.textContent=Math.round(start).toLocaleString('de-DE')+suffix; if(start<target) requestAnimationFrame(go); };
+  go();
+}
+setTimeout(() => {
+  countTo(document.getElementById('stat-docs'), 2847332);
+  countTo(document.getElementById('stat-spiders'), 247);
+  countTo(document.getElementById('stat-latency'), 48, 'ms');
+  document.getElementById('docs-delta').textContent = '▲ +12.340/h';
+  setTimeout(() => animateGauge(), 400);
+}, 300);
+
+// ── Gauge ──
+function animateGauge() {
+  const c = document.getElementById('gaugeCanvas');
+  const ctx = c.getContext('2d');
+  c.width = 180; c.height = 110;
+  let val = 0;
+  const target = 0.74; // 74%
+  (function draw() {
+    ctx.clearRect(0,0,180,110);
+    const cx=90, cy=105, r=75;
+    // Background arc
+    ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0);
+    ctx.lineWidth=14; ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.stroke();
+    // Value arc
+    ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,Math.PI+val*Math.PI);
+    const g=ctx.createLinearGradient(cx-r,cy,cx+r,cy);
+    g.addColorStop(0,'#00f5ff'); g.addColorStop(1,'#a855f7');
+    ctx.strokeStyle=g; ctx.lineCap='round'; ctx.stroke();
+    // Needle
+    const angle = Math.PI + val*Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(angle)*(r-10), cy+Math.sin(angle)*(r-10));
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    // Center dot
+    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    // Update value display
+    document.getElementById('gaugeValue').textContent = Math.round(val*12.8*100)/100 + ' Mrd.';
+    if (val < target) { val = Math.min(val+0.008, target); requestAnimationFrame(draw); }
+  })();
+}
+
+// ── Latency Chart ──
+const latencyData = [];
+const latencyCanvas = document.getElementById('latencyChart');
+const lCtx = latencyCanvas.getContext('2d');
+function drawLatencyChart() {
+  const W = latencyCanvas.offsetWidth || 400;
+  const H = latencyCanvas.offsetHeight || 120;
+  latencyCanvas.width = W; latencyCanvas.height = H;
+  if (latencyData.length < 2) return;
+  lCtx.clearRect(0,0,W,H);
+  const drawLine = (series, color, alpha=1) => {
+    lCtx.beginPath();
+    series.forEach((v,i) => {
+      const x = i/(series.length-1)*W;
+      const y = H - (v/120)*H;
+      i===0 ? lCtx.moveTo(x,y) : lCtx.lineTo(x,y);
+    });
+    lCtx.strokeStyle=color; lCtx.lineWidth=2; lCtx.globalAlpha=alpha;
+    lCtx.stroke(); lCtx.globalAlpha=1;
+  };
+  drawLine(latencyData.map(d=>d.p50),'#00f5ff');
+  drawLine(latencyData.map(d=>d.p95),'#a855f7');
+  drawLine(latencyData.map(d=>d.p99),'#ef4444',.7);
+  const last = latencyData[latencyData.length-1];
+  document.getElementById('p50').textContent=last.p50+'ms';
+  document.getElementById('p95').textContent=last.p95+'ms';
+  document.getElementById('p99').textContent=last.p99+'ms';
+}
+setInterval(() => {
+  const p50=20+Math.random()*20, p95=p50+10+Math.random()*15, p99=p95+5+Math.random()*10;
+  latencyData.push({p50:Math.round(p50),p95:Math.round(p95),p99:Math.round(p99)});
+  if(latencyData.length>60) latencyData.shift();
+  drawLatencyChart();
+}, 1000);
+
+// ── Live Feed ──
+const feedMessages = [
+  { icon:'🕷', msg:'Spider <strong>#12</strong> hat gerade <strong>CNN.com</strong> heruntergeladen. 4 Krypto-Wallets gefunden.' },
+  { icon:'🔍', msg:'Deduplication: <strong>847 Duplikate</strong> in den letzten 5 Min. entfernt.' },
+  { icon:'🧠', msg:'NLP-Pipeline: <strong>Reuters.com</strong> verarbeitet — 3 Entitäten, Sentiment: Negativ.' },
+  { icon:'🌍', msg:'Global Tongue: <strong>NHK-Artikel</strong> auf Deutsch übersetzt.' },
+  { icon:'👁', msg:'Oculus Omnia: Text aus Screenshot auf <strong>darkforum.onion</strong> extrahiert.' },
+  { icon:'⚡', msg:'Spider <strong>#47</strong> startet Crawl auf <strong>Spiegel.de</strong> — 1.240 URLs in Queue.' },
+  { icon:'🛡', msg:'Quantum Stealth: <strong>Rate-Limit</strong> erkannt auf BBC.com — Proxy rotiert.' },
+  { icon:'₿', msg:'Wallet <strong>bc1qxy2k…</strong> in neuem Artikel auf <strong>Guardian.com</strong> erkannt.' },
+  { icon:'🎬', msg:'Phantom Video: YouTube-Link in Crawler-Queue — Video-Extraktion ohne Playback aktiv.' },
+  { icon:'✅', msg:'Index-Rotation: Tages-Index <strong>articles-2026-03-03</strong> erstellt.' },
+];
+let feedIdx = 0;
+function addFeedItem() {
+  const feed = document.getElementById('liveFeed');
+  const now = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const msg = feedMessages[feedIdx++ % feedMessages.length];
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  item.innerHTML = `<span class="feed-icon">${msg.icon}</span><span class="feed-time">${now}</span><span class="feed-msg">${msg.msg}</span>`;
+  feed.prepend(item);
+  while(feed.children.length > 30) feed.lastChild.remove();
+}
+setInterval(addFeedItem, 1200);
+addFeedItem();
+
+// ── Spider Table ──
+const spiders = [
+  { id:'SP-001', target:'reuters.com', status:'active', pct:87, rate:340 },
+  { id:'SP-002', target:'spiegel.de', status:'active', pct:53, rate:280 },
+  { id:'SP-003', target:'bbc.com', status:'active', pct:72, rate:195 },
+  { id:'SP-004', target:'cnn.com', status:'idle',  pct:100, rate:0 },
+  { id:'SP-005', target:'darkforum.onion', status:'active', pct:31, rate:42 },
+  { id:'SP-006', target:'faz.net', status:'error', pct:12, rate:0 },
+];
+function renderSpiders() {
+  const tb = document.getElementById('spiderTable');
+  tb.innerHTML = '';
+  spiders.forEach(s => {
+    const statusClass = s.status==='active'?'status-active':s.status==='idle'?'status-idle':'status-error';
+    const statusLabel = s.status==='active'?'● Aktiv':s.status==='idle'?'◐ Bereit':'✕ Fehler';
+    tb.innerHTML += `<tr>
+      <td>${s.id}</td>
+      <td style="font-family:monospace;font-size:.75rem">${s.target}</td>
+      <td class="${statusClass}" style="font-size:.75rem">${statusLabel}</td>
+      <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${s.pct}%"></div></div></td>
+      <td>${s.rate}</td>
+    </tr>`;
+  });
+}
+renderSpiders();
+// Simulate live updates
+setInterval(() => {
+  spiders.forEach(s => {
+    if (s.status==='active') {
+      s.pct = Math.min(100, s.pct + Math.floor(Math.random()*3));
+      s.rate = Math.max(0, s.rate + Math.round(Math.random()*20 - 10));
+    }
+  });
+  renderSpiders();
+}, 2000);
+
+// ── Nuclear Reset ──
+function toggleNuke() {
+  document.getElementById('nukeCover').classList.toggle('open');
+}
+function doNuke() {
+  const pw = document.getElementById('nukePw').value;
+  if (!pw) { showToast('⚠ Bitte Passwort eingeben.'); return; }
+  if (pw === 'RESET') {
+    document.getElementById('nukeCover').classList.remove('open');
+    document.getElementById('nukePw').value = '';
+    showModal('☢ Nuclear Reset ausgeführt', 'Alle Crawl-Daten, Indizes und gecrawlten Dokumente wurden permanent gelöscht. Das System ist wieder im Ausgangszustand.');
+    showToast('☢ System zurückgesetzt.', 5000);
+  } else {
+    showToast('⚠ Falsches Passwort. (Hint: "RESET")');
+  }
+}
+
+// ── Toast ──
+function showToast(msg, dur=3000) {
+  const t=document.getElementById('toast'); t.innerHTML=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── Modal ──
+function showModal(title, body) {
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').textContent=body;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+</script>
+</body>
+</html>
