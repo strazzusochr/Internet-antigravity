@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperMega C2 — Mission Control Hub</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --void: #050510;
+      --glass: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --cyan: #00f5ff;
+      --purple: #a855f7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+
+    body {
+      background: var(--void);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated nebula background ── */
+    #nebula {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    }
+
+    /* ── Header bar ── */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      background: rgba(5,5,16,0.7);
+    }
+    header .logo {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    header .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 1.2rem;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.05em; }
+    header .badge {
+      font-size: 0.65rem; background: var(--purple); color: #fff;
+      padding: 2px 8px; border-radius: 99px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    header nav { display: flex; gap: 1rem; align-items: center; }
+    header nav a {
+      color: var(--muted); text-decoration: none; font-size: 0.9rem;
+      transition: color .2s;
+    }
+    header nav a:hover { color: var(--cyan); }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity:1; } 50% { opacity:.4; }
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; z-index: 5;
+      text-align: center; padding: 4rem 2rem 2rem;
+    }
+    .hero h2 {
+      font-size: clamp(1.8rem, 5vw, 3.5rem);
+      font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 60%, #fff 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      margin-top: 1rem; color: var(--muted); font-size: 1.05rem; max-width: 540px; margin-inline: auto;
+    }
+    .system-time {
+      display: inline-block; margin-top: 1.2rem;
+      font-size: 0.8rem; color: var(--cyan); opacity: .7;
+      font-family: 'Courier New', monospace; letter-spacing: 0.1em;
+    }
+
+    /* ── Card grid ── */
+    .cards {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.8rem;
+      max-width: 1200px; margin: 2.5rem auto 4rem; padding: 0 2rem;
+    }
+
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      cursor: pointer;
+      transition: transform .25s, box-shadow .25s, border-color .25s;
+      backdrop-filter: blur(18px);
+      transform-style: preserve-3d;
+      perspective: 800px;
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 30% 30%, rgba(168,85,247,.12) 0%, transparent 70%);
+      opacity: 0; transition: opacity .3s;
+      pointer-events: none;
+    }
+    .card:hover::before { opacity: 1; }
+    .card:hover {
+      transform: translateY(-8px) rotateX(4deg) rotateY(-2deg);
+      box-shadow: 0 20px 60px rgba(0,245,255,.15), 0 0 0 1px rgba(0,245,255,.3);
+      border-color: var(--cyan);
+    }
+    .card-icon {
+      font-size: 2.8rem; margin-bottom: 1rem;
+      display: inline-block;
+      filter: drop-shadow(0 0 12px var(--cyan));
+      animation: float-icon 3s ease-in-out infinite;
+    }
+    .card:nth-child(2) .card-icon { animation-delay: -.8s; filter: drop-shadow(0 0 12px var(--purple)); }
+    .card:nth-child(3) .card-icon { animation-delay: -1.6s; filter: drop-shadow(0 0 12px #fb923c); }
+    .card:nth-child(4) .card-icon { animation-delay: -2.4s; filter: drop-shadow(0 0 12px var(--green)); }
+    @keyframes float-icon {
+      0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); }
+    }
+    .card h3 {
+      font-size: 1.2rem; font-weight: 700; margin-bottom: .5rem;
+      background: linear-gradient(90deg, #fff 0%, var(--cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .card:nth-child(2) h3 {
+      background: linear-gradient(90deg, #fff 0%, var(--purple) 100%);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    .card:nth-child(3) h3 {
+      background: linear-gradient(90deg, #fff 0%, #fb923c 100%);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    .card:nth-child(4) h3 {
+      background: linear-gradient(90deg, #fff 0%, var(--green) 100%);
+      -webkit-background-clip: text; background-clip: text;
+    }
+    .card p { color: var(--muted); font-size: .9rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .card .features { list-style: none; display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1.5rem; }
+    .card .features li {
+      font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: .5rem;
+    }
+    .card .features li::before {
+      content: '◆'; font-size: .5rem; color: var(--cyan); flex-shrink: 0;
+    }
+    .card:nth-child(2) .features li::before { color: var(--purple); }
+    .card:nth-child(3) .features li::before { color: #fb923c; }
+    .card:nth-child(4) .features li::before { color: var(--green); }
+
+    .btn-enter {
+      display: block; width: 100%;
+      padding: .75rem 1rem; border-radius: 12px;
+      border: 1px solid var(--cyan);
+      background: rgba(0,245,255,.08);
+      color: var(--cyan); font-size: .9rem; font-weight: 600;
+      cursor: pointer; transition: all .2s; letter-spacing: .05em;
+      text-align: center; text-decoration: none;
+    }
+    .btn-enter:hover {
+      background: rgba(0,245,255,.18);
+      box-shadow: 0 0 20px rgba(0,245,255,.3);
+      transform: scale(1.02);
+    }
+    .card:nth-child(2) .btn-enter { border-color: var(--purple); color: var(--purple); background: rgba(168,85,247,.08); }
+    .card:nth-child(2) .btn-enter:hover { background: rgba(168,85,247,.18); box-shadow: 0 0 20px rgba(168,85,247,.3); }
+    .card:nth-child(3) .btn-enter { border-color: #fb923c; color: #fb923c; background: rgba(251,146,60,.08); }
+    .card:nth-child(3) .btn-enter:hover { background: rgba(251,146,60,.18); box-shadow: 0 0 20px rgba(251,146,60,.3); }
+    .card:nth-child(4) .btn-enter { border-color: var(--green); color: var(--green); background: rgba(34,197,94,.08); }
+    .card:nth-child(4) .btn-enter:hover { background: rgba(34,197,94,.18); box-shadow: 0 0 20px rgba(34,197,94,.3); }
+
+    .card .progress-bar {
+      height: 3px; border-radius: 99px;
+      background: rgba(255,255,255,.08);
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+    .card .progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      transition: width 1s ease;
+    }
+    .card .progress-label {
+      font-size: .7rem; color: var(--muted); text-align: right;
+      margin-top: .3rem;
+    }
+
+    /* ── Bottom stats bar ── */
+    .stats-bar {
+      position: relative; z-index: 5;
+      display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;
+      padding: 1.5rem 2rem;
+      border-top: 1px solid var(--border);
+      background: rgba(5,5,16,0.6);
+      backdrop-filter: blur(20px);
+    }
+    .stat { text-align: center; }
+    .stat .value {
+      font-size: 1.6rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+    /* ── Tooltip overlay ── */
+    .tooltip-overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+    }
+    .tooltip-overlay.active { display: flex; }
+    .tooltip-box {
+      background: rgba(10,10,30,.9);
+      border: 1px solid var(--cyan);
+      border-radius: 20px; padding: 2.5rem;
+      max-width: 480px; width: 90%;
+      box-shadow: 0 0 60px rgba(0,245,255,.2);
+      animation: pop-in .25s ease;
+    }
+    @keyframes pop-in {
+      from { transform: scale(.85); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .tooltip-box h4 { font-size: 1.15rem; margin-bottom: .8rem; color: var(--cyan); }
+    .tooltip-box p  { color: var(--muted); font-size: .9rem; line-height: 1.7; }
+    .tooltip-close {
+      display: block; margin-top: 1.5rem;
+      padding: .6rem 1.5rem; border: 1px solid var(--cyan);
+      border-radius: 8px; background: transparent; color: var(--cyan);
+      cursor: pointer; font-size: .9rem; transition: background .2s;
+    }
+    .tooltip-close:hover { background: rgba(0,245,255,.1); }
+
+    /* ── Scan line effect ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px
+      );
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="nebula"></canvas>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⬡</div>
+    <div>
+      <h1>HyperMega C2</h1>
+    </div>
+    <span class="badge">OSINT v2.0</span>
+  </div>
+  <nav>
+    <span class="status-dot"></span>
+    <span style="font-size:.85rem; color: var(--green)">System Online</span>
+    <a href="crawler.html">Crawler</a>
+    <a href="search.html">Suche</a>
+    <a href="dashboard.html">Dashboard</a>
+  </nav>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <h2>Mission Control Hub</h2>
+  <p>Das zentrale Kommandozentrum. Wähle ein Modul und tritt ein.</p>
+  <div class="system-time" id="clock">INITIALISIERUNG...</div>
+</section>
+
+<!-- Program Cards -->
+<main class="cards">
+
+  <!-- Card 1: Hub itself (active page) -->
+  <article class="card" onclick="showTip('hub')">
+    <div class="card-icon">🛸</div>
+    <h3>Mission Control Hub</h3>
+    <p>Das Einstiegsportal. Überwache alle aktiven Operationen auf einen Blick und navigiere in jedes Untermodul.</p>
+    <ul class="features">
+      <li>Echtzeit-Systemstatus aller Module</li>
+      <li>Live-Benachrichtigungen & Alerts</li>
+      <li>Schnellzugriff auf alle Programme</li>
+      <li>Globale Systemsteuerung</li>
+    </ul>
+    <button class="btn-enter" onclick="event.stopPropagation()">◎ Du bist hier</button>
+    <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    <div class="progress-label">100% Aktiv</div>
+  </article>
+
+  <!-- Card 2: Crawler -->
+  <article class="card" onclick="window.location='crawler.html'">
+    <div class="card-icon">🕷</div>
+    <h3>Targeting & Crawler Control</h3>
+    <p>Füge URLs per Klick oder Smart-Paste ein. Steuere Spider-Flotten, aktiviere Deep Mode und starte Crawl-Operationen.</p>
+    <ul class="features">
+      <li>Smart Paste — URL-Extraktion aus Zwischenablage</li>
+      <li>Deep Mode — Tor / .onion Support</li>
+      <li>God-Tier Launch mit Warp-Animation</li>
+      <li>Echtzeit-Status der Spider-Flotte</li>
+    </ul>
+    <a href="crawler.html" class="btn-enter" onclick="event.stopPropagation()">▶ Modul betreten</a>
+    <div class="progress-bar"><div class="progress-fill" style="width:90%; background: linear-gradient(90deg, #a855f7, #ec4899)"></div></div>
+    <div class="progress-label">90% Einsatzbereit</div>
+  </article>
+
+  <!-- Card 3: Search -->
+  <article class="card" onclick="window.location='search.html'">
+    <div class="card-icon">🔮</div>
+    <h3>3D Matrix Search</h3>
+    <p>Durchsuche gecrawlte Welten. Visualisiere Entitäten als interaktives 3D-Netzwerk. Semantische KI-Suche per Schalter.</p>
+    <ul class="features">
+      <li>Semantic AI — Vektorbasierte Suche</li>
+      <li>3D Force-Graph mit Drag &amp; Drop</li>
+      <li>Ergebnis-Karten mit EXIF &amp; Geo-Icons</li>
+      <li>Echtzeit-Übersetzung (Global Tongue)</li>
+    </ul>
+    <a href="search.html" class="btn-enter" onclick="event.stopPropagation()">▶ Modul betreten</a>
+    <div class="progress-bar"><div class="progress-fill" style="width:68%; background: linear-gradient(90deg, #fb923c, #f59e0b)"></div></div>
+    <div class="progress-label">68% Einsatzbereit</div>
+  </article>
+
+  <!-- Card 4: Dashboard -->
+  <article class="card" onclick="window.location='dashboard.html'">
+    <div class="card-icon">📡</div>
+    <h3>System Health &amp; Analytics</h3>
+    <p>Überwache Spider-Aktivität, Datenbank-Größe und System-Vitals. Inklusive One-Click Nuclear Reset.</p>
+    <ul class="features">
+      <li>Live Feed — Was macht jeder Spider?</li>
+      <li>Brain Size Tachometer (Datenbankgröße)</li>
+      <li>Query-Latenz P50/P95/P99</li>
+      <li>Nuclear Reset (passwortgesichert)</li>
+    </ul>
+    <a href="dashboard.html" class="btn-enter" onclick="event.stopPropagation()">▶ Modul betreten</a>
+    <div class="progress-bar"><div class="progress-fill" style="width:25%; background: linear-gradient(90deg, #22c55e, #10b981)"></div></div>
+    <div class="progress-label">25% Einsatzbereit</div>
+  </article>
+
+</main>
+
+<!-- Stats Bar -->
+<footer class="stats-bar">
+  <div class="stat">
+    <div class="value" id="stat-docs">0</div>
+    <div class="label">Dokumente indexiert</div>
+  </div>
+  <div class="stat">
+    <div class="value" id="stat-sources">1.000</div>
+    <div class="label">Aktive Quellen</div>
+  </div>
+  <div class="stat">
+    <div class="value" id="stat-speed">0 ms</div>
+    <div class="label">Query-Latenz (P95)</div>
+  </div>
+  <div class="stat">
+    <div class="value" id="stat-spiders">0</div>
+    <div class="label">Spider aktiv</div>
+  </div>
+  <div class="stat">
+    <div class="value" id="stat-uptime">99.9%</div>
+    <div class="label">Uptime</div>
+  </div>
+</footer>
+
+<!-- Tooltip Overlay -->
+<div class="tooltip-overlay" id="tipOverlay">
+  <div class="tooltip-box">
+    <h4 id="tipTitle">Info</h4>
+    <p id="tipBody">...</p>
+    <button class="tooltip-close" onclick="closeTip()">Schließen ✕</button>
+  </div>
+</div>
+
+<script>
+  // ── Nebula canvas animation ──
+  const canvas = document.getElementById('nebula');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  const resize = () => { W = canvas.width = innerWidth; H = canvas.height = innerHeight; };
+  resize(); addEventListener('resize', resize);
+
+  const orbs = Array.from({length: 5}, (_, i) => ({
+    x: Math.random() * 1, y: Math.random() * 1,
+    r: 250 + Math.random() * 300,
+    hue: i % 2 === 0 ? 180 : 270,
+    speed: .0003 + Math.random() * .0004,
+    phase: Math.random() * Math.PI * 2
+  }));
+
+  function drawNebula(t) {
+    ctx.clearRect(0, 0, W, H);
+    orbs.forEach(o => {
+      const x = (o.x + Math.cos(t * o.speed + o.phase) * .15) * W;
+      const y = (o.y + Math.sin(t * o.speed + o.phase) * .15) * H;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, o.r);
+      g.addColorStop(0, `hsla(${o.hue},100%,60%,.07)`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    });
+    requestAnimationFrame(drawNebula);
+  }
+  requestAnimationFrame(drawNebula);
+
+  // ── Clock ──
+  const clockEl = document.getElementById('clock');
+  function tick() {
+    clockEl.textContent = '◎ SYSTEM-ZEIT: ' + new Date().toUTCString().replace('GMT', 'UTC');
+  }
+  tick(); setInterval(tick, 1000);
+
+  // ── Animated counters ──
+  function countTo(el, target, suffix='', duration=1800) {
+    let start = 0, step = target / (duration / 16);
+    const go = () => {
+      start = Math.min(start + step, target);
+      el.textContent = Math.round(start).toLocaleString('de-DE') + suffix;
+      if (start < target) requestAnimationFrame(go);
+    };
+    go();
+  }
+  setTimeout(() => {
+    countTo(document.getElementById('stat-docs'), 2847332);
+    countTo(document.getElementById('stat-speed'), 48, ' ms');
+    countTo(document.getElementById('stat-spiders'), 247);
+  }, 400);
+
+  // ── 3D tilt on hover ──
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width  - .5;
+      const y = (e.clientY - r.top)  / r.height - .5;
+      card.style.transform = `translateY(-8px) rotateX(${-y*10}deg) rotateY(${x*10}deg)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+  });
+
+  // ── Tooltip ──
+  const tips = {
+    hub: {
+      title: '🛸 Mission Control Hub',
+      body: 'Das ist das zentrale Einstiegsportal des HyperMega C2 Systems. Von hier aus gelangst du per Klick in jedes der vier Hauptmodule. Der Hub zeigt dir stets den aktuellen Systemstatus und alle wichtigen Metriken auf einen Blick.'
+    }
+  };
+  function showTip(key) {
+    const t = tips[key];
+    if (!t) return;
+    document.getElementById('tipTitle').textContent = t.title;
+    document.getElementById('tipBody').textContent = t.body;
+    document.getElementById('tipOverlay').classList.add('active');
+  }
+  function closeTip() {
+    document.getElementById('tipOverlay').classList.remove('active');
+  }
+  document.getElementById('tipOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeTip();
+  });
+</script>
+</body>
+</html>

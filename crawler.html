@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperMega C2 — Targeting & Crawler Control</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --void: #050510;
+      --glass: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --cyan: #00f5ff;
+      --purple: #a855f7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #fb923c;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --deep-bg: #050510;
+    }
+
+    body {
+      background: var(--void);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      transition: background .6s, --deep-tint .6s;
+    }
+    body.deep-mode {
+      --void: #100505;
+      --glass: rgba(239,68,68,.06);
+      --border: rgba(239,68,68,.18);
+      --cyan: #ff4444;
+      --purple: #ff6666;
+    }
+
+    #nebula { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+    /* ── Header ── */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      background: rgba(5,5,16,.7);
+    }
+    header .back {
+      color: var(--muted); text-decoration: none; font-size: .9rem;
+      display: flex; align-items: center; gap: .5rem;
+      transition: color .2s;
+    }
+    header .back:hover { color: var(--cyan); }
+    header h1 { font-size: 1.15rem; font-weight: 700; }
+    .deep-status {
+      font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .5rem;
+    }
+    .deep-status .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 8px var(--green);
+    }
+    body.deep-mode .deep-status .dot { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+    /* ── Main layout ── */
+    .main {
+      position: relative; z-index: 5;
+      max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── Console header ── */
+    .console-header {
+      text-align: center; margin-bottom: 2.5rem;
+    }
+    .console-header h2 {
+      font-size: 2rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .console-header p { color: var(--muted); margin-top: .5rem; }
+
+    /* ── Controls row ── */
+    .controls-row {
+      display: flex; gap: 1rem; align-items: center; justify-content: center;
+      margin-bottom: 2rem; flex-wrap: wrap;
+    }
+
+    /* Deep Mode Toggle */
+    .deep-toggle-wrap { display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+    .deep-toggle-wrap label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .lever {
+      width: 56px; height: 28px; border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid var(--border);
+      cursor: pointer; position: relative;
+      transition: background .3s, border-color .3s;
+    }
+    .lever .knob {
+      position: absolute; top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--muted);
+      transition: transform .3s, background .3s, box-shadow .3s;
+    }
+    .lever.on { background: rgba(239,68,68,.2); border-color: var(--red); }
+    .lever.on .knob {
+      transform: translateX(28px);
+      background: var(--red);
+      box-shadow: 0 0 12px var(--red);
+    }
+
+    /* Mode badge */
+    .mode-badge {
+      font-size: .75rem; padding: 4px 12px; border-radius: 99px;
+      border: 1px solid var(--cyan); color: var(--cyan);
+      background: rgba(0,245,255,.06);
+      transition: all .3s;
+    }
+    body.deep-mode .mode-badge {
+      border-color: var(--red); color: var(--red);
+      background: rgba(239,68,68,.06);
+    }
+
+    /* ── Input zone ── */
+    .input-zone {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 1.8rem;
+      backdrop-filter: blur(18px);
+      margin-bottom: 1.5rem;
+    }
+    .input-zone label {
+      display: block; font-size: .8rem; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: .8rem;
+    }
+    .input-row { display: flex; gap: .75rem; }
+    .url-input {
+      flex: 1; padding: .85rem 1.2rem;
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text);
+      font-size: .95rem; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      font-family: 'Courier New', monospace;
+    }
+    .url-input::placeholder { color: rgba(148,163,184,.4); }
+    .url-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(0,245,255,.12); }
+    .btn {
+      padding: .85rem 1.4rem;
+      border-radius: 12px; border: 1px solid;
+      cursor: pointer; font-size: .9rem; font-weight: 600;
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-add {
+      border-color: var(--cyan); color: var(--cyan);
+      background: rgba(0,245,255,.08);
+    }
+    .btn-add:hover { background: rgba(0,245,255,.18); box-shadow: 0 0 16px rgba(0,245,255,.25); }
+
+    .btn-paste {
+      display: block; width: 100%; margin-top: 1rem;
+      padding: 1rem; border-radius: 14px;
+      border: 1px dashed var(--purple); color: var(--purple);
+      background: rgba(168,85,247,.06);
+      cursor: pointer; font-size: .95rem; font-weight: 600;
+      transition: all .2s; text-align: center;
+    }
+    .btn-paste:hover { background: rgba(168,85,247,.14); box-shadow: 0 0 20px rgba(168,85,247,.2); }
+    .btn-paste .paste-icon { font-size: 1.3rem; margin-right: .5rem; }
+
+    /* ── URL Pills ── */
+    .pills-section {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 20px; padding: 1.5rem;
+      backdrop-filter: blur(18px); margin-bottom: 1.5rem;
+      min-height: 100px;
+    }
+    .pills-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem;
+    }
+    .pills-header span { font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+    .btn-clear-all {
+      font-size: .75rem; color: var(--red); background: none; border: none;
+      cursor: pointer; opacity: .7; transition: opacity .2s;
+    }
+    .btn-clear-all:hover { opacity: 1; }
+    .pills-container {
+      display: flex; flex-wrap: wrap; gap: .6rem;
+      min-height: 40px; align-items: flex-start;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .35rem .75rem; border-radius: 99px;
+      background: rgba(0,245,255,.08);
+      border: 1px solid rgba(0,245,255,.25);
+      font-size: .78rem; font-family: 'Courier New', monospace;
+      color: var(--cyan); max-width: 240px;
+      animation: pill-in .2s ease;
+    }
+    @keyframes pill-in {
+      from { transform: scale(.6); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .pill.dark { border-color: rgba(239,68,68,.4); color: var(--red); background: rgba(239,68,68,.08); }
+    .pill.video { border-color: rgba(239,68,68,.5); color: var(--red); background: rgba(239,68,68,.12); }
+    .pill-label {
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px;
+    }
+    .pill-remove {
+      background: none; border: none; color: inherit; cursor: pointer;
+      opacity: .5; transition: opacity .2s; font-size: .9rem; flex-shrink: 0;
+    }
+    .pill-remove:hover { opacity: 1; }
+    .pills-empty {
+      color: var(--muted); font-size: .85rem; text-align: center;
+      padding: 1rem; width: 100%;
+    }
+
+    /* ── Options ── */
+    .options-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .option-card {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem;
+      backdrop-filter: blur(18px);
+      display: flex; align-items: center; gap: .8rem;
+      cursor: pointer; transition: border-color .2s, background .2s;
+    }
+    .option-card:hover { border-color: var(--cyan); background: rgba(0,245,255,.04); }
+    .option-card.active { border-color: var(--cyan); background: rgba(0,245,255,.08); }
+    .option-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .option-info { flex: 1; }
+    .option-info h4 { font-size: .85rem; font-weight: 600; }
+    .option-info p  { font-size: .72rem; color: var(--muted); margin-top: .1rem; }
+    .option-toggle {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: rgba(255,255,255,.08); border: 1px solid var(--border);
+      position: relative; flex-shrink: 0; transition: all .2s;
+    }
+    .option-toggle .t-knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted); transition: all .2s;
+    }
+    .option-card.active .option-toggle { background: rgba(0,245,255,.2); border-color: var(--cyan); }
+    .option-card.active .option-toggle .t-knob { transform: translateX(16px); background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+
+    /* ── Launch button ── */
+    .launch-section { text-align: center; }
+    .btn-launch {
+      display: inline-block; padding: 1.2rem 4rem;
+      border-radius: 16px; border: 2px solid var(--cyan);
+      background: linear-gradient(135deg, rgba(0,245,255,.12), rgba(168,85,247,.12));
+      color: var(--cyan); font-size: 1.1rem; font-weight: 800;
+      cursor: pointer; letter-spacing: .15em; text-transform: uppercase;
+      transition: all .25s; position: relative; overflow: hidden;
+    }
+    .btn-launch::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,245,255,.2), rgba(168,85,247,.2));
+      opacity: 0; transition: opacity .2s;
+    }
+    .btn-launch:hover::before { opacity: 1; }
+    .btn-launch:hover {
+      box-shadow: 0 0 40px rgba(0,245,255,.4), 0 0 80px rgba(168,85,247,.2);
+      transform: translateY(-2px);
+    }
+    .btn-launch:active { transform: scale(.97); }
+    .launch-hint { font-size: .75rem; color: var(--muted); margin-top: .8rem; }
+
+    /* ── Warp overlay ── */
+    #warpOverlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: #000; align-items: center; justify-content: center;
+      flex-direction: column; gap: 1.5rem;
+    }
+    #warpOverlay.active { display: flex; }
+    #warpCanvas { position: absolute; inset: 0; }
+    .warp-msg {
+      position: relative; z-index: 2; text-align: center;
+      color: var(--cyan); font-size: 1.3rem; font-weight: 700;
+    }
+
+    /* ── Scan lines ── */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px);
+    }
+
+    /* ── Notification toast ── */
+    #toast {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 300;
+      background: rgba(10,10,30,.95); border: 1px solid var(--cyan);
+      border-radius: 12px; padding: .9rem 1.4rem;
+      color: var(--text); font-size: .9rem;
+      transform: translateY(120%); transition: transform .3s;
+      box-shadow: 0 0 30px rgba(0,245,255,.2); max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<canvas id="nebula"></canvas>
+
+<!-- Header -->
+<header>
+  <a href="index.html" class="back">← Mission Control</a>
+  <h1>🕷 Targeting &amp; Crawler Control</h1>
+  <div class="deep-status">
+    <div class="dot"></div>
+    <span id="modeLabel">Normal Mode</span>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Console Header -->
+  <div class="console-header">
+    <h2>Spider-Startrampe</h2>
+    <p>Füge Ziel-URLs ein. Wähle den Modus. Entsende die Spider-Flotte.</p>
+  </div>
+
+  <!-- Controls Row -->
+  <div class="controls-row">
+    <div class="deep-toggle-wrap">
+      <label>Deep Mode</label>
+      <div class="lever" id="deepLever" onclick="toggleDeepMode()">
+        <div class="knob"></div>
+      </div>
+    </div>
+    <div class="mode-badge" id="modeBadge">⬡ SURFACE WEB</div>
+    <div class="deep-toggle-wrap">
+      <label>Ziele gesamt</label>
+      <div style="font-size:1.4rem;font-weight:800;color:var(--cyan)" id="pillCount">0</div>
+    </div>
+  </div>
+
+  <!-- Input Zone -->
+  <div class="input-zone">
+    <label>Ziel-URL manuell eingeben</label>
+    <div class="input-row">
+      <input type="text" class="url-input" id="urlInput"
+        placeholder="https://example.com  oder  http://darksite.onion"
+        onkeydown="if(event.key==='Enter') addUrl()" />
+      <button class="btn btn-add" onclick="addUrl()">+ Hinzufügen</button>
+    </div>
+    <button class="btn-paste" onclick="smartPaste()">
+      <span class="paste-icon">📋</span>
+      Smart Paste — URLs aus Zwischenablage extrahieren
+    </button>
+  </div>
+
+  <!-- Pills -->
+  <div class="pills-section">
+    <div class="pills-header">
+      <span>Ziel-Liste (<span id="pillCountLabel">0</span> URLs)</span>
+      <button class="btn-clear-all" onclick="clearAll()">✕ Alle löschen</button>
+    </div>
+    <div class="pills-container" id="pillsContainer">
+      <div class="pills-empty" id="pillsEmpty">Noch keine URLs. Füge sie oben hinzu oder nutze Smart Paste.</div>
+    </div>
+  </div>
+
+  <!-- Options Grid -->
+  <div class="options-grid">
+    <div class="option-card active" id="opt-js" onclick="toggleOpt(this)">
+      <div class="option-icon">🧠</div>
+      <div class="option-info">
+        <h4>JavaScript Rendering</h4>
+        <p>Playwright für SPAs & dynamische Seiten</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+    <div class="option-card" id="opt-dedup" onclick="toggleOpt(this)">
+      <div class="option-icon">🔍</div>
+      <div class="option-info">
+        <h4>Deduplication</h4>
+        <p>SHA-256 Content-Hash für Delta-Crawling</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+    <div class="option-card active" id="opt-proxy" onclick="toggleOpt(this)">
+      <div class="option-icon">🛡</div>
+      <div class="option-info">
+        <h4>Proxy Rotation</h4>
+        <p>Quantum Stealth — Anti-Ban System</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+    <div class="option-card active" id="opt-nlp" onclick="toggleOpt(this)">
+      <div class="option-icon">🤖</div>
+      <div class="option-info">
+        <h4>NLP Pipeline</h4>
+        <p>NER, Sentiment, Sprach-Erkennung</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+    <div class="option-card" id="opt-ocr" onclick="toggleOpt(this)">
+      <div class="option-icon">👁</div>
+      <div class="option-info">
+        <h4>OCR (Oculus Omnia)</h4>
+        <p>Text aus Bildern &amp; Screenshots extrahieren</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+    <div class="option-card" id="opt-translate" onclick="toggleOpt(this)">
+      <div class="option-icon">🌍</div>
+      <div class="option-info">
+        <h4>Global Tongue</h4>
+        <p>Automatische Echtzeit-Übersetzung</p>
+      </div>
+      <div class="option-toggle"><div class="t-knob"></div></div>
+    </div>
+  </div>
+
+  <!-- Launch -->
+  <div class="launch-section">
+    <button class="btn-launch" onclick="launch()">⚡ GOD-TIER LAUNCH ⚡</button>
+    <div class="launch-hint">Startet die komplette Spider-Flotte auf alle eingetragenen Ziele</div>
+  </div>
+
+</div>
+
+<!-- Warp Overlay -->
+<div id="warpOverlay">
+  <canvas id="warpCanvas"></canvas>
+  <div class="warp-msg" id="warpMsg">Zielkoordinaten bestätigt.<br>Die Spider-Flotte wurde entsandt.</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── Nebula ──
+(function() {
+  const c = document.getElementById('nebula'), ctx = c.getContext('2d');
+  let W, H;
+  const resize = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+  resize(); addEventListener('resize', resize);
+  const orbs = [{x:.2,y:.3,r:300,hue:180},{x:.8,y:.6,r:260,hue:270},{x:.5,y:.8,r:200,hue:220}];
+  let t = 0;
+  (function draw() {
+    ctx.clearRect(0,0,W,H);
+    orbs.forEach((o,i) => {
+      const x = (o.x + Math.cos(t*.0004+i)*0.12)*W;
+      const y = (o.y + Math.sin(t*.0004+i)*0.12)*H;
+      const g = ctx.createRadialGradient(x,y,0,x,y,o.r);
+      g.addColorStop(0, `hsla(${document.body.classList.contains('deep-mode')?0:o.hue},100%,60%,.06)`);
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    });
+    t++; requestAnimationFrame(draw);
+  })();
+})();
+
+// ── State ──
+let pills = [];
+let deepMode = false;
+
+// ── Deep Mode ──
+function toggleDeepMode() {
+  deepMode = !deepMode;
+  document.body.classList.toggle('deep-mode', deepMode);
+  document.getElementById('deepLever').classList.toggle('on', deepMode);
+  document.getElementById('modeBadge').textContent = deepMode ? '🔴 DEEP MODE — TOR/.ONION' : '⬡ SURFACE WEB';
+  document.getElementById('modeLabel').textContent  = deepMode ? 'Deep Mode AKTIV' : 'Normal Mode';
+  pills.forEach(p => updatePillColor(p.id));
+  showToast(deepMode ? '🔴 Deep Mode aktiviert — .onion-Routen aktiv' : '⬡ Normal Mode wiederhergestellt');
+}
+
+// ── URL helpers ──
+function isOnion(url) { return /\.onion/i.test(url); }
+function isVideo(url) { return /youtube\.com|youtu\.be|vimeo\.com|tiktok\.com/i.test(url); }
+function extractUrls(text) {
+  const re = /https?:\/\/[^\s"'<>]+/gi;
+  return [...new Set(text.match(re) || [])];
+}
+function slugify(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.replace('www.','') + parsed.pathname.substring(0,20);
+  } catch { return url.substring(0,30); }
+}
+
+// ── Add URL ──
+function addUrl(rawUrl) {
+  rawUrl = rawUrl || document.getElementById('urlInput').value.trim();
+  if (!rawUrl) return;
+  const urls = extractUrls(rawUrl.includes('://') ? rawUrl : 'https://'+rawUrl);
+  if (!urls.length) { showToast('⚠ Keine gültige URL erkannt.'); return; }
+  urls.forEach(u => addPill(u));
+  document.getElementById('urlInput').value = '';
+}
+
+// ── HTML escaping helper ──
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function addPill(url) {
+  if (pills.find(p => p.url === url)) return;
+  const id = 'pill-' + Date.now() + Math.random().toString(36).slice(2);
+  pills.push({ id, url });
+  renderPills();
+}
+
+function updatePillColor(id) { renderPills(); }
+
+function renderPills() {
+  const container = document.getElementById('pillsContainer');
+  const empty = document.getElementById('pillsEmpty');
+  document.getElementById('pillCount').textContent = pills.length;
+  document.getElementById('pillCountLabel').textContent = pills.length;
+  if (!pills.length) {
+    empty.style.display = ''; container.innerHTML = '';
+    container.appendChild(empty); return;
+  }
+  empty.style.display = 'none';
+  // preserve existing + add new
+  const existing = new Set([...container.querySelectorAll('.pill')].map(el => el.dataset.id));
+  pills.forEach(p => {
+    if (existing.has(p.id)) return;
+    const isOnionUrl = isOnion(p.url);
+    const isVid = isVideo(p.url);
+    const el = document.createElement('div');
+    el.className = 'pill' + (isOnionUrl || deepMode ? ' dark' : '') + (isVid ? ' video' : '');
+    el.dataset.id = p.id;
+    const icon = isVid ? '🎬' : isOnionUrl ? '🧅' : '🌐';
+    el.innerHTML = `<span>${icon}</span><span class="pill-label">${escHtml(slugify(p.url))}</span><button class="pill-remove" aria-label="Entfernen">✕</button>`;
+    el.querySelector('.pill-label').title = p.url;
+    el.querySelector('.pill-remove').addEventListener('click', () => removePill(p.id));
+    if (isVid) {
+      el.title = '⚠ Video-Link erkannt. Phantom-Skimming wird angewendet (keine Video-Wiedergabe, reine KI-Text-Extraktion).';
+    }
+    container.appendChild(el);
+  });
+  // Remove pills no longer in state
+  [...container.querySelectorAll('.pill')].forEach(el => {
+    if (!pills.find(p => p.id === el.dataset.id)) el.remove();
+  });
+}
+
+function removePill(id) {
+  pills = pills.filter(p => p.id !== id);
+  document.querySelector(`.pill[data-id="${id}"]`)?.remove();
+  document.getElementById('pillCount').textContent = pills.length;
+  document.getElementById('pillCountLabel').textContent = pills.length;
+  if (!pills.length) renderPills();
+}
+
+function clearAll() {
+  pills = [];
+  document.getElementById('pillsContainer').innerHTML = '';
+  document.getElementById('pillsContainer').appendChild(document.getElementById('pillsEmpty'));
+  document.getElementById('pillsEmpty').style.display = '';
+  document.getElementById('pillCount').textContent = 0;
+  document.getElementById('pillCountLabel').textContent = 0;
+}
+
+// ── Smart Paste ──
+async function smartPaste() {
+  try {
+    const text = await navigator.clipboard.readText();
+    const found = extractUrls(text);
+    if (!found.length) { showToast('📋 Keine URLs in der Zwischenablage gefunden.'); return; }
+    found.forEach(u => addPill(u));
+    showToast(`📋 ${found.length} URL${found.length>1?'s':''} aus Zwischenablage extrahiert!`);
+  } catch {
+    // Fallback: prompt
+    const text = prompt('Füge hier deinen Text mit URLs ein:');
+    if (!text) return;
+    const found = extractUrls(text);
+    found.forEach(u => addPill(u));
+    showToast(`📋 ${found.length} URL${found.length>1?'s':''} extrahiert.`);
+  }
+}
+
+// ── Options toggle ──
+function toggleOpt(el) { el.classList.toggle('active'); }
+
+// ── Launch ──
+function launch() {
+  if (!pills.length) { showToast('⚠ Bitte zuerst Ziel-URLs hinzufügen.'); return; }
+  const overlay = document.getElementById('warpOverlay');
+  overlay.classList.add('active');
+  startWarp();
+  const msgs = [
+    'Zielkoordinaten bestätigt.<br>Die Spider-Flotte wurde entsandt.',
+    '⚡ ' + pills.length + ' Ziele werden gecrawlt...',
+    '🛡 Quantum Stealth aktiv...',
+    '✅ Crawl-Operation gestartet!'
+  ];
+  let i = 0;
+  const warpMsg = document.getElementById('warpMsg');
+  const iv = setInterval(() => {
+    i++;
+    if (i < msgs.length) warpMsg.innerHTML = msgs[i];
+    else {
+      clearInterval(iv);
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        showToast('✅ Spider-Flotte entsandt! ' + pills.length + ' Ziele werden verarbeitet.');
+      }, 800);
+    }
+  }, 900);
+}
+
+// ── Warp effect ──
+function startWarp() {
+  const c = document.getElementById('warpCanvas');
+  const ctx = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const cx = c.width/2, cy = c.height/2;
+  const stars = Array.from({length:300}, () => ({
+    x: (Math.random()-0.5)*c.width,
+    y: (Math.random()-0.5)*c.height,
+    z: Math.random()*c.width
+  }));
+  let running = true;
+  function draw() {
+    if (!running) return;
+    ctx.fillStyle = 'rgba(0,0,0,.2)';
+    ctx.fillRect(0,0,c.width,c.height);
+    ctx.strokeStyle = '#00f5ff';
+    stars.forEach(s => {
+      s.z -= 20;
+      if (s.z <= 0) {
+        s.x = (Math.random()-.5)*c.width;
+        s.y = (Math.random()-.5)*c.height;
+        s.z = c.width;
+      }
+      const sx = (s.x/s.z)*c.width + cx;
+      const sy = (s.y/s.z)*c.height + cy;
+      const size = Math.max(.5, (1-s.z/c.width)*3);
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,245,255,${1-s.z/c.width})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+  setTimeout(() => { running = false; }, 3500);
+}
+
+// ── Toast ──
+function showToast(msg, dur=3000) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Demo data on load ──
+['https://www.reuters.com', 'https://www.spiegel.de', 'https://www.bbc.com'].forEach(addPill);
+</script>
+</body>
+</html>

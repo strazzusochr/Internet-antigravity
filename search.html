@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperMega C2 — 3D Matrix Search</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --void: #050510;
+      --glass: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --cyan: #00f5ff;
+      --purple: #a855f7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    body {
+      background: var(--void); color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh;
+    }
+    #nebula { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);
+    }
+
+    /* ── Header ── */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2rem; border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px); background: rgba(5,5,16,.7);
+    }
+    header .back { color: var(--muted); text-decoration: none; font-size: .9rem; display: flex; align-items: center; gap: .5rem; transition: color .2s; }
+    header .back:hover { color: var(--cyan); }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+
+    /* ── Search section ── */
+    .search-section {
+      position: relative; z-index: 5;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2.5rem 1.5rem 1.5rem;
+    }
+    .search-section h2 {
+      font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 800;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 1.5rem;
+    }
+    .search-bar {
+      display: flex; width: 100%; max-width: 720px;
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 99px; overflow: hidden;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 0 0 0 rgba(0,245,255,0);
+      transition: box-shadow .3s, border-color .3s;
+    }
+    .search-bar:focus-within {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(0,245,255,.12), 0 0 40px rgba(0,245,255,.1);
+    }
+    .search-bar input {
+      flex: 1; padding: 1rem 1.5rem;
+      background: none; border: none; color: var(--text);
+      font-size: 1rem; outline: none;
+      font-family: inherit;
+    }
+    .search-bar input::placeholder { color: rgba(148,163,184,.4); }
+    .btn-search {
+      padding: .8rem 1.8rem; margin: .3rem .3rem .3rem 0;
+      border-radius: 99px; border: none;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      color: #000; font-weight: 700; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-search:hover { opacity: .85; }
+
+    /* ── Semantic toggle ── */
+    .semantic-toggle-row {
+      display: flex; align-items: center; gap: .8rem;
+      margin-top: 1rem; background: var(--glass);
+      border: 1px solid var(--border); border-radius: 99px;
+      padding: .5rem 1.2rem; backdrop-filter: blur(18px);
+      cursor: pointer; transition: border-color .2s;
+    }
+    .semantic-toggle-row:hover { border-color: var(--purple); }
+    .semantic-toggle-row.active { border-color: var(--purple); background: rgba(168,85,247,.08); }
+    .sem-icon { font-size: 1.1rem; }
+    .sem-label { font-size: .85rem; color: var(--muted); }
+    .sem-badge {
+      font-size: .65rem; padding: 2px 8px; border-radius: 99px;
+      background: var(--purple); color: #fff; font-weight: 600; opacity: 0;
+      transition: opacity .2s;
+    }
+    .semantic-toggle-row.active .sem-badge { opacity: 1; }
+    .sem-switch {
+      width: 36px; height: 20px; border-radius: 10px;
+      background: rgba(255,255,255,.08); border: 1px solid var(--border);
+      position: relative; transition: all .2s;
+    }
+    .sem-knob {
+      position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--muted); transition: all .2s;
+    }
+    .semantic-toggle-row.active .sem-switch { background: rgba(168,85,247,.2); border-color: var(--purple); }
+    .semantic-toggle-row.active .sem-knob { transform: translateX(16px); background: var(--purple); box-shadow: 0 0 8px var(--purple); }
+
+    /* ── Filters ── */
+    .filter-row {
+      display: flex; gap: .6rem; margin-top: .8rem; flex-wrap: wrap; justify-content: center;
+    }
+    .filter-chip {
+      padding: .35rem .9rem; border-radius: 99px; border: 1px solid var(--border);
+      background: var(--glass); color: var(--muted); font-size: .78rem;
+      cursor: pointer; transition: all .2s; backdrop-filter: blur(10px);
+    }
+    .filter-chip:hover { border-color: var(--cyan); color: var(--cyan); }
+    .filter-chip.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,245,255,.08); }
+
+    /* ── Layout: graph + cards ── */
+    .content {
+      position: relative; z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      padding: 0 1.5rem 4rem;
+      max-width: 1400px; margin: 0 auto;
+    }
+    @media (max-width: 900px) {
+      .content { grid-template-columns: 1fr; }
+    }
+
+    /* ── 3D Graph panel ── */
+    .graph-panel {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden; backdrop-filter: blur(18px);
+      min-height: 480px; position: relative;
+    }
+    .graph-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.2rem; border-bottom: 1px solid var(--border);
+    }
+    .graph-panel-header h3 { font-size: .9rem; font-weight: 600; }
+    .graph-legend {
+      display: flex; gap: .8rem; font-size: .72rem; color: var(--muted);
+    }
+    .legend-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 3px;
+    }
+    #graphCanvas { width: 100%; height: 420px; display: block; cursor: grab; }
+    #graphCanvas:active { cursor: grabbing; }
+    .graph-tooltip {
+      position: absolute; background: rgba(5,5,16,.9);
+      border: 1px solid var(--cyan); border-radius: 8px;
+      padding: .5rem .8rem; font-size: .78rem; pointer-events: none;
+      display: none; z-index: 20; white-space: nowrap;
+    }
+
+    /* ── Results panel ── */
+    .results-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .results-header {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .results-header h3 { font-size: .9rem; color: var(--muted); }
+    .sort-select {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: .8rem;
+      padding: .35rem .7rem; cursor: pointer; outline: none;
+    }
+
+    .result-card {
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.2rem;
+      backdrop-filter: blur(18px); transition: all .2s;
+      animation: card-in .3s ease;
+    }
+    @keyframes card-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .result-card:hover { border-color: var(--cyan); box-shadow: 0 4px 24px rgba(0,245,255,.1); }
+    .result-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: .5rem; margin-bottom: .6rem;
+    }
+    .result-title {
+      font-size: .95rem; font-weight: 600; color: var(--text);
+      line-height: 1.4; flex: 1;
+    }
+    .result-title mark {
+      background: rgba(0,245,255,.2); color: var(--cyan);
+      border-radius: 3px; padding: 0 2px;
+    }
+    .result-meta {
+      display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+      margin-bottom: .5rem;
+    }
+    .meta-badge {
+      font-size: .68rem; padding: 2px 7px; border-radius: 99px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .meta-badge.source { color: var(--cyan); border-color: rgba(0,245,255,.25); }
+    .meta-badge.lang { color: var(--purple); border-color: rgba(168,85,247,.25); }
+    .meta-badge.sentiment-pos { color: var(--green); border-color: rgba(34,197,94,.25); }
+    .meta-badge.sentiment-neg { color: var(--red); border-color: rgba(239,68,68,.25); }
+    .result-snippet { font-size: .83rem; color: var(--muted); line-height: 1.6; margin-bottom: .8rem; }
+    .result-snippet mark { background: rgba(0,245,255,.15); color: var(--cyan); border-radius: 2px; padding: 0 2px; }
+    .result-icons {
+      display: flex; gap: .6rem; align-items: center;
+    }
+    .result-icon-btn {
+      font-size: 1.1rem; background: none; border: none; cursor: pointer;
+      opacity: .5; transition: opacity .2s; padding: 4px;
+      border-radius: 6px;
+    }
+    .result-icon-btn:hover { opacity: 1; background: rgba(255,255,255,.06); }
+
+    /* ── Translate toggle on card ── */
+    .translate-row {
+      display: flex; align-items: center; gap: .5rem;
+      margin-top: .6rem; font-size: .75rem; color: var(--muted);
+    }
+    .btn-translate {
+      font-size: .72rem; padding: 3px 10px; border-radius: 99px;
+      border: 1px solid var(--muted); background: none; color: var(--muted);
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-translate:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── Map popup ── */
+    #mapPopup {
+      display: none; position: fixed; z-index: 100;
+      background: rgba(5,5,16,.95); border: 1px solid var(--cyan);
+      border-radius: 16px; padding: 1.5rem; width: 380px; max-width: 90vw;
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      box-shadow: 0 0 60px rgba(0,245,255,.2); animation: pop-in .2s ease;
+    }
+    @keyframes pop-in { from{transform:translate(-50%,-50%) scale(.85);opacity:0} to{transform:translate(-50%,-50%) scale(1);opacity:1} }
+    #mapPopup h4 { color: var(--cyan); margin-bottom: .8rem; }
+    #mapFrame { width: 100%; height: 220px; border: none; border-radius: 8px; background: #111; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: .8rem; }
+    .popup-close { display: block; margin-top: 1rem; width: 100%; padding: .6rem; border: 1px solid var(--border); border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font-size: .85rem; transition: all .2s; }
+    .popup-close:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 300; background: rgba(10,10,30,.95); border: 1px solid var(--cyan); border-radius: 12px; padding: .9rem 1.4rem; color: var(--text); font-size: .9rem; transform: translateY(120%); transition: transform .3s; box-shadow: 0 0 30px rgba(0,245,255,.2); max-width: 320px; }
+    #toast.show { transform: translateY(0); }
+
+    /* ── Loading spinner ── */
+    .spinner { display: none; text-align: center; padding: 3rem; color: var(--muted); }
+    .spinner.active { display: block; }
+    .spin { display: inline-block; width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<canvas id="nebula"></canvas>
+
+<!-- Header -->
+<header>
+  <a href="index.html" class="back">← Mission Control</a>
+  <h1>🔮 3D Matrix Search</h1>
+  <div class="header-right">
+    <span style="font-size:.8rem;color:var(--muted)">Indiziert: <strong style="color:var(--cyan)">2.847.332</strong> Dok.</span>
+  </div>
+</header>
+
+<!-- Search -->
+<section class="search-section">
+  <h2>Search the Matrix</h2>
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Suche nach Personen, Wallets, Ereignissen…"
+      onkeydown="if(event.key==='Enter') doSearch()" />
+    <button class="btn-search" onclick="doSearch()">🔍 Suchen</button>
+  </div>
+
+  <div class="semantic-toggle-row" id="semanticToggle" onclick="toggleSemantic()">
+    <span class="sem-icon">✨</span>
+    <span class="sem-label">Semantic AI — Bedeutungsbasierte KI-Suche</span>
+    <span class="sem-badge">KI AKTIV</span>
+    <div class="sem-switch"><div class="sem-knob"></div></div>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-chip active" onclick="toggleFilter(this,'all')">Alle</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'news')">📰 Nachrichten</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'crypto')">₿ Crypto</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'persons')">👤 Personen</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'orgs')">🏢 Organisationen</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'darkweb')">🧅 Dark Web</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'24h')">⏰ Letzte 24h</div>
+  </div>
+</section>
+
+<!-- Content: Graph + Cards -->
+<main class="content">
+
+  <!-- 3D Graph -->
+  <div class="graph-panel">
+    <div class="graph-panel-header">
+      <h3>🕸 Entitäten-Netzwerk (3D Force-Graph)</h3>
+      <div class="graph-legend">
+        <span><span class="legend-dot" style="background:#ef4444"></span>BTC Wallet</span>
+        <span><span class="legend-dot" style="background:#3b82f6"></span>Person</span>
+        <span><span class="legend-dot" style="background:#22c55e"></span>Domain</span>
+        <span><span class="legend-dot" style="background:#f59e0b"></span>Org</span>
+      </div>
+    </div>
+    <canvas id="graphCanvas"></canvas>
+    <div class="graph-tooltip" id="graphTooltip"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-panel">
+    <div class="results-header">
+      <h3 id="resultsCount">— Ergebnisse</h3>
+      <select class="sort-select" id="sortSelect" onchange="sortResults()">
+        <option value="relevance">Relevanz</option>
+        <option value="date">Datum (neu)</option>
+        <option value="sentiment">Sentiment</option>
+      </select>
+    </div>
+    <div class="spinner" id="spinner"><div class="spin"></div><br>Suche läuft…</div>
+    <div id="resultsList"></div>
+  </div>
+
+</main>
+
+<!-- Map Popup -->
+<div id="mapPopup">
+  <h4>🗺 Geo-Vorschau</h4>
+  <div id="mapFrame">📍 Kartenansicht würde hier geladen<br>(Google Maps / OpenStreetMap Integration)</div>
+  <button class="popup-close" onclick="document.getElementById('mapPopup').style.display='none'">✕ Schließen</button>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── Nebula ──
+(function() {
+  const c = document.getElementById('nebula'), ctx = c.getContext('2d');
+  let W, H;
+  const resize = () => { W = c.width = innerWidth; H = c.height = innerHeight; };
+  resize(); addEventListener('resize', resize);
+  const orbs = [{x:.3,y:.4,r:280,hue:190},{x:.7,y:.5,r:240,hue:270},{x:.5,y:.2,r:200,hue:220}];
+  let t = 0;
+  (function draw() {
+    ctx.clearRect(0,0,W,H);
+    orbs.forEach((o,i) => {
+      const x=(o.x+Math.cos(t*.0003+i)*.1)*W, y=(o.y+Math.sin(t*.0003+i)*.1)*H;
+      const g=ctx.createRadialGradient(x,y,0,x,y,o.r);
+      g.addColorStop(0,`hsla(${o.hue},100%,60%,.05)`);
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    });
+    t++; requestAnimationFrame(draw);
+  })();
+})();
+
+// ── State ──
+let semanticOn = false;
+let currentQuery = '';
+let results = [];
+
+// ── Semantic toggle ──
+function toggleSemantic() {
+  semanticOn = !semanticOn;
+  document.getElementById('semanticToggle').classList.toggle('active', semanticOn);
+  showToast(semanticOn ? '✨ Semantic AI aktiviert — Vektorsuche aktiv' : '🔤 Zurück zur Volltext-Suche');
+}
+
+// ── Filter chips ──
+function toggleFilter(el, key) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  if (currentQuery) doSearch();
+}
+
+// ── Mock data ──
+const mockDocs = [
+  { id:1, title:'Bitcoin-Wallet BC1Q8K... mit Darknet-Marktplatz verknüpft', source:'Reuters', lang:'EN', date:'2026-03-03', sentiment:'neg', snippet:'Ermittler der BKA identifizierten eine <mark>Bitcoin</mark>-Wallet mit über 14 BTC, die direkt mit einem Darknet-Forum in Verbindung steht. Die Transaktion...', entities:['BTC:BC1Q8K','Person:Max Müller','Domain:darkforum.onion'], geo:'Berlin, Deutschland', ocr:false, translated:false },
+  { id:2, title:'Hack-Angriff auf Bundesbehörde — 3 Wallets beschlagnahmt', source:'Spiegel', lang:'DE', date:'2026-03-02', sentiment:'neg', snippet:'Ein koordinierter Cyber-Angriff traf gestern mehrere Bundesbehörden. Die Täter nutzten <mark>Hack</mark>-Tools aus dem Tor-Netzwerk und hinterließen drei Krypto-Wallets...', entities:['Org:Bundesbehörde','BTC:3FZbgi...','Person:Unbekannt'], geo:'Berlin, Deutschland', ocr:false, translated:false },
+  { id:3, title:'Anonymous Deutschland: Neue Operation angekündigt', source:'BBC', lang:'EN', date:'2026-03-01', sentiment:'neu', snippet:'Die Hacktivisten-Gruppe Anonymous kündigte auf ihrer .onion-Seite eine neue <mark>Operation</mark> gegen Überwachungssysteme an. Details wurden in einem Screenshot veröffentlicht...', entities:['Org:Anonymous','Domain:anon.onion'], geo:'International', ocr:true, translated:false },
+  { id:4, title:'新型ランサムウェアが欧州企業を攻撃', source:'NHK', lang:'JA', date:'2026-02-28', sentiment:'neg', snippet:'新しいランサムウェアキャンペーンが欧州の企業に影響を与えています...', entities:['Org:Unknown Group','BTC:1BvBMSE...'], geo:'Tokyo, Japan', ocr:false, translated:false },
+  { id:5, title:'Sicherheitslücke in OpenSSL 3.x — Critical CVE veröffentlicht', source:'DW', lang:'DE', date:'2026-02-27', sentiment:'neg', snippet:'Eine kritische Sicherheitslücke in <mark>OpenSSL</mark> 3.x ermöglicht Remote Code Execution. Alle betroffenen Systeme sollten sofort gepatcht werden. Das CERT warnt...', entities:['Org:OpenSSL','Person:Security Team'], geo:'Frankfurt, Deutschland', ocr:false, translated:false },
+  { id:6, title:'Europol zerschlägt Krypto-Geldwäsche-Ring: 47 Verhaftungen', source:'Guardian', lang:'EN', date:'2026-02-26', sentiment:'pos', snippet:'In einer internationalen Operation hat Europol einen groß angelegten Kryptowährungs-Geldwäschering zerschlagen. <mark>47 Personen</mark> wurden in 12 Ländern verhaftet...', entities:['Org:Europol','BTC:bc1qxy...','Person:Various'], geo:'Den Haag, Niederlande', ocr:false, translated:false },
+];
+
+// ── Search ──
+function doSearch() {
+  currentQuery = document.getElementById('searchInput').value.trim();
+  if (!currentQuery) { showToast('Bitte einen Suchbegriff eingeben.'); return; }
+
+  document.getElementById('spinner').classList.add('active');
+  document.getElementById('resultsList').innerHTML = '';
+  document.getElementById('resultsCount').textContent = 'Suche läuft…';
+
+  setTimeout(() => {
+    document.getElementById('spinner').classList.remove('active');
+    const q = currentQuery.toLowerCase();
+    results = mockDocs.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.snippet.toLowerCase().includes(q) ||
+      d.entities.join(' ').toLowerCase().includes(q)
+    );
+    if (!results.length) results = mockDocs.slice(0, 4); // demo fallback
+    renderResults(results);
+    renderGraph(results);
+    document.getElementById('resultsCount').textContent = results.length + ' Ergebnis' + (results.length!==1?'se':'');
+    showToast(`🔍 ${results.length} Ergebnisse für "${currentQuery}"`);
+  }, 800);
+}
+
+// ── HTML escaping helper ──
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Render Results ──
+function renderResults(docs) {
+  const list = document.getElementById('resultsList');
+  list.innerHTML = '';
+  docs.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    const sentClass = d.sentiment==='pos' ? 'sentiment-pos' : d.sentiment==='neg' ? 'sentiment-neg' : '';
+    const sentLabel = d.sentiment==='pos' ? '😊 Positiv' : d.sentiment==='neg' ? '😠 Negativ' : '😐 Neutral';
+    const entityList = d.entities.map(escHtml).join(' | ');
+    card.innerHTML = `
+      <div class="result-card-header">
+        <div class="result-title">${highlight(escHtml(d.title))}</div>
+        ${d.ocr ? '<span title="Text via OCR (Oculus Omnia) aus Bild extrahiert" style="font-size:1.1rem;cursor:help">👁</span>' : ''}
+      </div>
+      <div class="result-meta">
+        <span class="meta-badge source">📰 ${escHtml(d.source)}</span>
+        <span class="meta-badge">${escHtml(d.date)}</span>
+        <span class="meta-badge lang">🌐 ${escHtml(d.lang)}</span>
+        <span class="meta-badge ${sentClass}">${sentLabel}</span>
+      </div>
+      <div class="result-snippet">${d.snippet}</div>
+      <div class="result-icons">
+        <button class="result-icon-btn" title="Geo-Vorschau: ${escHtml(d.geo)}">📍</button>
+        <button class="result-icon-btn" title="Im Graphen markieren">🕸</button>
+        <button class="result-icon-btn" title="Entitäten: ${entityList}">🔖</button>
+        <button class="result-icon-btn" title="Link kopieren">🔗</button>
+      </div>
+      ${d.lang !== 'DE' ? `<div class="translate-row">🌍 ${escHtml(d.lang)}-Dokument erkannt. <button class="btn-translate">Auf Deutsch übersetzen</button></div>` : ''}
+    `;
+    // Attach event listeners (avoid inline onclick with user data)
+    const btns = card.querySelectorAll('.result-icon-btn');
+    btns[0].addEventListener('click', () => showMap(d.geo));
+    btns[1].addEventListener('click', () => highlightNode(d.id));
+    btns[2].addEventListener('click', () => showToast('Entitäten: ' + d.entities.join(' | ')));
+    btns[3].addEventListener('click', () => showToast('🔗 Link kopiert!'));
+    const transBtn = card.querySelector('.btn-translate');
+    if (transBtn) transBtn.addEventListener('click', function() { toggleTranslate(this, d.id); });
+    list.appendChild(card);
+  });
+}
+
+function highlight(text) {
+  if (!currentQuery) return text;
+  const re = new RegExp('(' + currentQuery.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+  return text.replace(re, '<mark>$1</mark>');
+}
+
+const INITIAL_GRAPH_NODES = 4;
+
+function toggleTranslate(btn, id) {
+  const card = btn.closest('.result-card');
+  const snippet = card.querySelector('.result-snippet');
+  if (btn.textContent.includes('übersetzen')) {
+    snippet.innerHTML = '<em style="color:var(--green)">[🌍 Automatisch übersetzt — Global Tongue aktiv]</em><br>' + snippet.innerHTML;
+    btn.textContent = 'Originaltext anzeigen';
+  } else {
+    snippet.innerHTML = snippet.innerHTML.replace(/<em[^>]*>.*?<\/em><br>/s,'');
+    btn.textContent = 'Auf Deutsch übersetzen';
+  }
+}
+
+function sortResults() {
+  const v = document.getElementById('sortSelect').value;
+  if (!results.length) return;
+  const sorted = [...results];
+  if (v === 'date') sorted.sort((a,b) => b.date.localeCompare(a.date));
+  if (v === 'sentiment') sorted.sort((a,b) => (a.sentiment==='pos'?0:1) - (b.sentiment==='pos'?0:1));
+  renderResults(sorted);
+}
+
+// ── 3D Force Graph ──
+const graphCanvas = document.getElementById('graphCanvas');
+const gCtx = graphCanvas.getContext('2d');
+let nodes = [], edges = [], animId;
+let drag = null, mousePos = {x:0,y:0};
+
+const typeColors = {
+  'BTC': '#ef4444', 'Person': '#3b82f6', 'Domain': '#22c55e', 'Org': '#f59e0b', 'Doc': '#a855f7'
+};
+
+function renderGraph(docs) {
+  cancelAnimationFrame(animId);
+  nodes = []; edges = [];
+  const W = graphCanvas.offsetWidth, H = graphCanvas.offsetHeight || 420;
+  graphCanvas.width = W; graphCanvas.height = H;
+
+  // Create doc nodes
+  docs.forEach((d,i) => {
+    const angle = (i/docs.length) * Math.PI*2;
+    nodes.push({ id: 'doc'+d.id, label: d.source, type:'Doc', x: W/2+Math.cos(angle)*100, y: H/2+Math.sin(angle)*100, vx:0, vy:0, r:10 });
+    // Create entity nodes
+    d.entities.forEach(e => {
+      const [type,val] = e.split(':');
+      const existing = nodes.find(n=>n.id==='ent_'+e);
+      if (!existing) {
+        nodes.push({ id:'ent_'+e, label:val||e, type:type||'Org', x:W/2+(Math.random()-.5)*200, y:H/2+(Math.random()-.5)*200, vx:0, vy:0, r:8 });
+      }
+      edges.push({ s:'doc'+d.id, t:'ent_'+e });
+    });
+  });
+  drawGraph();
+}
+
+function drawGraph() {
+  const W = graphCanvas.width, H = graphCanvas.height;
+  gCtx.clearRect(0,0,W,H);
+
+  // Physics: repulsion + spring
+  nodes.forEach(n => {
+    nodes.forEach(m => {
+      if (n===m) return;
+      const dx=n.x-m.x, dy=n.y-m.y, d=Math.sqrt(dx*dx+dy*dy)||1;
+      const f=1200/(d*d);
+      n.vx+=f*dx/d; n.vy+=f*dy/d;
+    });
+  });
+  edges.forEach(e => {
+    const s=nodes.find(n=>n.id===e.s), t=nodes.find(n=>n.id===e.t);
+    if(!s||!t) return;
+    const dx=t.x-s.x, dy=t.y-s.y, d=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(d-80)*.025;
+    s.vx+=f*dx/d; s.vy+=f*dy/d;
+    t.vx-=f*dx/d; t.vy-=f*dy/d;
+  });
+  // Center pull
+  nodes.forEach(n => {
+    n.vx+=(W/2-n.x)*.002; n.vy+=(H/2-n.y)*.002;
+    n.vx*=.85; n.vy*=.85;
+    n.x=Math.max(n.r,Math.min(W-n.r,n.x+n.vx));
+    n.y=Math.max(n.r,Math.min(H-n.r,n.y+n.vy));
+  });
+
+  // Draw edges
+  gCtx.lineWidth=1;
+  edges.forEach(e => {
+    const s=nodes.find(n=>n.id===e.s), t=nodes.find(n=>n.id===e.t);
+    if(!s||!t) return;
+    gCtx.strokeStyle='rgba(0,245,255,.15)';
+    gCtx.beginPath(); gCtx.moveTo(s.x,s.y); gCtx.lineTo(t.x,t.y); gCtx.stroke();
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const col = typeColors[n.type] || '#888';
+    // Glow
+    const grad = gCtx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*2.5);
+    grad.addColorStop(0, col+'44'); grad.addColorStop(1,'transparent');
+    gCtx.fillStyle=grad; gCtx.beginPath(); gCtx.arc(n.x,n.y,n.r*2.5,0,Math.PI*2); gCtx.fill();
+    // Circle
+    gCtx.fillStyle=col; gCtx.beginPath(); gCtx.arc(n.x,n.y,n.r,0,Math.PI*2); gCtx.fill();
+    // Label
+    gCtx.fillStyle='rgba(255,255,255,.8)'; gCtx.font='10px Segoe UI';
+    gCtx.textAlign='center'; gCtx.fillText(n.label, n.x, n.y+n.r+12);
+  });
+
+  animId = requestAnimationFrame(drawGraph);
+}
+
+// Graph interaction
+graphCanvas.addEventListener('mousedown', e => {
+  const rect = graphCanvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  drag = nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+6);
+});
+graphCanvas.addEventListener('mousemove', e => {
+  const rect = graphCanvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  mousePos={x:mx,y:my};
+  if (drag) { drag.x=mx; drag.y=my; drag.vx=0; drag.vy=0; }
+  // Tooltip
+  const hov = nodes.find(n=>Math.hypot(n.x-mx,n.y-my)<n.r+6);
+  const tip = document.getElementById('graphTooltip');
+  if (hov) {
+    tip.style.display='block'; tip.style.left=(e.clientX-graphCanvas.getBoundingClientRect().left+10)+'px'; tip.style.top=(my-28)+'px';
+    tip.textContent=`[${hov.type}] ${hov.label}`;
+  } else { tip.style.display='none'; }
+});
+graphCanvas.addEventListener('mouseup', () => { drag=null; });
+graphCanvas.addEventListener('mouseleave', () => { drag=null; document.getElementById('graphTooltip').style.display='none'; });
+
+function highlightNode(docId) {
+  const node = nodes.find(n=>n.id==='doc'+docId);
+  if (node) { node.r=18; setTimeout(()=>{node.r=10;},1500); }
+}
+
+// ── Map popup ──
+function showMap(geo) {
+  document.getElementById('mapPopup').style.display='block';
+  document.getElementById('mapFrame').innerHTML=`<div style="text-align:center;padding:2rem;color:var(--cyan)">📍 <strong>${geo}</strong><br><br><span style="color:var(--muted);font-size:.8rem">Kartenansicht (Google Maps / OpenStreetMap Integration)</span></div>`;
+}
+
+// ── Toast ──
+function showToast(msg, dur=3000) {
+  const t = document.getElementById('toast');
+  t.innerHTML=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── Init: load sample graph ──
+setTimeout(() => {
+  renderGraph(mockDocs.slice(0, INITIAL_GRAPH_NODES));
+}, 200);
+
+// Auto-search on load
+setTimeout(() => {
+  document.getElementById('searchInput').value = 'Bitcoin Wallet Hack';
+  doSearch();
+}, 600);
+</script>
+</body>
+</html>
